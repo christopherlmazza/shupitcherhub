@@ -14,6 +14,12 @@ Throwing programs, daily check-ins, workload and TrackMan data for the Sacred He
 4. **Import the Drive data.** Sign in as the coach → Setup → Import from Google Drive → choose `shu-seed.json` (kept out of this repo on purpose because it holds athletes' health notes).
 5. **Invite pitchers.** Roster & invites → add each email → Send invite.
 
+## Program days, drill library, videos
+
+Each program day can carry drills in four sections (Pre-work, Throwing, Med ball, Bullpen / live focus), notes per drill, notes per section and overall day notes. Any drill typed in the builder is saved to the drill library (Setup → Drill library), where it can be renamed, filed under a section and given default cues. Pitchers can post videos (upload up to 50 MB, or a link) with their own notes; the coach adds feedback. Uploads live in a private Supabase Storage bucket readable only by the coach and that pitcher. Run `supabase/02_videos_updates.sql` once to enable this.
+
+The coach home page pops up anything new from pitchers since the coach last looked (logs, check-ins, videos); the Updates button in the top bar reopens it.
+
 ## Return to throw
 
 Return-to-throw programs are their own day type with a workload computed per throw, using the elbow-torque model from the published interval-throwing workload study (IJSPT): flat-ground throws by distance, velo-target throws by effort (target ÷ the pitcher's top TrackMan velo), each throw weighted (torque/74 Nm)^1.3 and scaled so 50 catch-play throws ≈ a Hybrid B day and a 75-pitch outing ≈ a Live/Game day. Put a sheet on the calendar from the pitcher's Return to Throw tab; tap any day to adjust throws, velo or distance.

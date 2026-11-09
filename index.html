@@ -605,7 +605,7 @@ function weekCal(aid,startWs,weeks,editable){
   for(let k=0;k<weeks;k++){const ws=addDays(startWs,7*k);h+=`<div class="wk">${md(ws)}</div>`;
     for(let i=0;i<7;i++){const d=addDays(ws,i);const p=planDay(aid,d);const l=logFor(aid,d);
       const shown=(l&&l.type)||(p&&p.type);
-      const meta=[p&&drillCount(p.sections)?drillCount(p.sections)+' drills':'',p&&p.rtt&&p.rtt.throws?p.rtt.throws+' thr · '+cellLoad(p,maxVelo(aid))+' pts':'',p&&p.throws?p.throws+' thr':'',p&&p.intensity?p.intensity+'%':'',l&&l.pitches?l.pitches+'p':'',l&&l.innings?l.innings+' IP':''].filter(Boolean).join(' · ');
+      const meta=[p&&drillCount(p.sections)?drillCount(p.sections)+(drillCount(p.sections)===1?' drill':' drills'):'',p&&p.rtt&&p.rtt.throws?p.rtt.throws+' thr · '+cellLoad(p,maxVelo(aid))+' pts':'',p&&p.throws?p.throws+' thr':'',p&&p.intensity?p.intensity+'%':'',l&&l.pitches?l.pitches+'p':'',l&&l.innings?l.innings+' IP':''].filter(Boolean).join(' · ');
       h+=`<div class="d ${d===TODAY?'today':''}" data-day="${d}" data-aid="${aid}"><span class="dn">${md(d)}</span>${shown?chip(shown,l&&l.type&&p&&p.type&&l.type!==p.type?' *':''):'<span class="sub" style="font-size:11px">—</span>'}${meta?`<span class="meta mono">${esc(meta)}</span>`:''}${l&&l.checkin!=null?ciBadge(l.checkin):''}</div>`}
     const r=acwr(aid,ws);h+=`<div class="tot"><span class="num"><b>${weekLoad(aid,ws)}</b><span class="sub">/${weekLoad(aid,ws,'plan')}</span></span>${r.ratio!=null&&r.acute?`<span class="pill ${ratioCls(r.ratio)}">${r.ratio.toFixed(2)}</span>`:''}</div>`}
   return h+'</div>';
@@ -973,7 +973,7 @@ function drawBuilderGrid(){
         <select data-k="${k}" data-i="${i}" data-f="type" aria-label="Type ${md(d)}"><option value="">—</option>${T.map(t=>`<option ${c.type===t.name?'selected':''}>${esc(t.name)}</option>`).join('')}</select>
         <div class="mini"><input type="number" min="0" placeholder="thr" value="${(c.rtt?c.rtt.throws:c.throws)??''}" data-k="${k}" data-i="${i}" data-f="throws" aria-label="Throws"><input type="number" min="0" max="100" placeholder="%" value="${c.intensity??''}" data-k="${k}" data-i="${i}" data-f="intensity" aria-label="Effort percent"></div>
         <input type="text" placeholder="note" value="${esc(c.notes||'')}" data-k="${k}" data-i="${i}" data-f="notes" style="padding:3px 5px;font-size:12px" aria-label="Note">
-        <button class="btn small ${drillCount(c.sections)||c.dayNotes?'':'ghost'}" data-dayed="${k}|${i}" style="justify-content:center;padding:3px 6px;font-size:12px">${drillCount(c.sections)?drillCount(c.sections)+' drills':'+ Drills & notes'}</button></div>`});
+        <button class="btn small ${drillCount(c.sections)||c.dayNotes?'':'ghost'}" data-dayed="${k}|${i}" style="justify-content:center;padding:3px 6px;font-size:12px">${drillCount(c.sections)?drillCount(c.sections)+(drillCount(c.sections)===1?' drill':' drills'):(c.dayNotes?'Notes':'+ Drills & notes')}</button></div>`});
     const mv=first?maxVelo(first):null;const load=Math.round(w.reduce((s,c)=>s+cellLoad(c,mv),0)*10)/10;const thr=w.reduce((s,c)=>s+(+c.throws||0),0);
     let ratio='';if(first){const hist=[];for(let j=3;j>=1;j--){const pw=addDays(ws,-7*j);const kk=k-j;hist.push(kk>=0?BUILD.grid[kk].reduce((s,c)=>s+cellLoad(c,mv),0):weekLoad(first,pw))}
       const f=firstWeek(first);const arr=[...hist,load];const chronic=arr.reduce((a,b)=>a+b,0)/arr.length;const r=chronic?Math.round(load/chronic*100)/100:null;if(r!=null&&load)ratio=`<span class="pill ${ratioCls(r)}">${r.toFixed(2)}</span>`}
