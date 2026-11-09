@@ -695,7 +695,7 @@ function bindPitchData(a){
     const ipTxt=`${Math.floor(row.ip+1e-6)}.${Math.round((row.ip-Math.floor(row.ip+1e-6))*3)}`;
     const era=row.ip?(row.er*9/row.ip).toFixed(2):'—';const whip=row.ip?((row.h+row.bb)/row.ip).toFixed(2):'—';
     const k=(v,l)=>`<div><b>${v}</b><span>${l}</span></div>`;
-    box.innerHTML=k(ipTxt,'IP')+k(era,'ERA')+k(whip,'WHIP')+k(row.k,'K')+k(row.bb,'BB')+k(row.h,'H')+k(row.bf,'BF')+k(row.tp?Math.round(row.s/row.tp*100)+'%':'—','Strike %')+k(row.bf?Math.round(row.fps/row.bf*100)+'%':'—','First-pitch K %');
+    box.innerHTML=k(ipTxt,'IP')+k(era,'ERA')+k(whip,'WHIP')+k(row.k,'K')+k(row.bb,'BB')+k(row.h,'H')+k(row.bf,'BF')+k(row.tp?Math.round(row.s/row.tp*100)+'%':'—','Strike %')+k(row.bf?Math.round(row.fps/row.bf*100)+'%':'—','First-pitch strike %');
     if(n<3)setTimeout(()=>fill(9),3000); /* refresh once after the team cloud finishes syncing */
   };
   f.addEventListener('load',()=>fill(0));
