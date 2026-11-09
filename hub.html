@@ -1702,7 +1702,7 @@ function parseTMDate(s){const months={jan:0,feb:1,mar:2,apr:3,may:4,jun:5,jul:6,
 function normName(n){return (n||'').toLowerCase().replace(/[^a-z]/g,'');}
 function normNameParts(n){return (n||'').toLowerCase().replace(/[^a-z\s,]/g,'').split(/[\s,]+/).filter(Boolean).sort().join('');}
 function matchPitcher(name){const a=normName(name),ap=normNameParts(name);
-  return DB.roster.find(p=>normName(p.name)===a)||DB.roster.find(p=>normNameParts(p.name)===ap)||
+  return DB.roster.find(p=>normName(p.name)===a)||DB.roster.find(p=>(p.aliases||[]).some(x=>normName(x)===a))||DB.roster.find(p=>normNameParts(p.name)===ap)||
     DB.roster.find(p=>{const b=normName(p.name);return b&&(a.includes(b)||b.includes(a));});}
 function matchSession(date){return DB.sessions.find(s=>s.date===date);}
 
@@ -2766,6 +2766,31 @@ function boot(){
   if(syncActive()){pushCloud();startSyncLoop();}
 }
 boot();
+
+/* ---------- Embedded mode: runs inside the SHUpitcherhub throwing site ----------
+   hub.html?embed=1                → full hub without its own header
+   hub.html?embed=1&p=Name&v=view  → locked to one pitcher, no tab bar (the site shows its own tabs)
+   &ro=1                           → read-only (pitcher's own view: no charting, uploads or data tools) */
+const EMB=new URLSearchParams(location.search);
+if(EMB.get('embed')){
+  const st=document.createElement('style');
+  st.textContent='header,#chCue{display:none!important} body{padding-top:0!important}'+
+    (EMB.get('p')?' nav{display:none!important} #rpPitcher,#trPitcher,#cmPitcher,#amPitcher,#chPitcher{display:none!important}':'')+
+    (EMB.get('ro')?' nav button[data-v=chart],nav button[data-v=trackman],nav button[data-v=data],nav button[data-v=pitchers]{display:none!important}':'');
+  document.head.appendChild(st);
+  const lockPid=()=>{const nm=EMB.get('p');if(!nm)return null;const last=nm.trim().split(/\s+/).pop().toLowerCase().replace(/[^a-z]/g,'');
+    let hit=matchPitcher(nm);if(!hit){const xs=DB.roster.filter(r=>normName(r.name.split(/\s+/).pop())===last);if(xs.length===1)hit=xs[0];}return hit?hit.id:null;};
+  const one=(id,pid)=>{const el=document.getElementById(id);if(!el)return;if(![...el.options].some(o=>o.value===pid))el.innerHTML=`<option value="${pid}"></option>`;el.value=pid;};
+  window.embedPid=lockPid;
+  window.embedApply=()=>{const pid=lockPid();const v=EMB.get('v');
+    if(EMB.get('p')&&!pid){document.querySelectorAll('.view').forEach(x=>x.classList.remove('active'));let m=document.getElementById('embedNone');if(!m){m=document.createElement('div');m.id='embedNone';m.className='card empty';m.style.margin='16px';m.textContent='No TrackMan or charted outings for this pitcher yet.';document.body.appendChild(m);}return;}
+    if(pid){RP_PID=pid;['rpPitcher','trPitcher','cmPitcher','amPitcher'].forEach(id=>one(id,pid));if(typeof AIM!=='undefined')AIM.pid=pid;}
+    if(v){const b=document.querySelector(`nav button[data-v="${v}"]`);if(b)b.click();}};
+  const _rr=rerenderActive;rerenderActive=function(){_rr();if(EMB.get('p'))embedApply();};
+  let lastH=0;setInterval(()=>{const h=Math.max(document.body.scrollHeight,document.documentElement.scrollHeight);if(Math.abs(h-lastH)>4){lastH=h;parent.postMessage({hubHeight:h,hubFor:EMB.get('p')||''},location.origin);}},400);
+  window.addEventListener('message',e=>{if(e.origin===location.origin&&e.data&&e.data.hubView){const b=document.querySelector(`nav button[data-v="${e.data.hubView}"]`);if(b)b.click();if(EMB.get('p'))embedApply();}});
+}
+if(EMB.get('embed')){embedApply();setTimeout(()=>embedApply(),1800);}
 </script>
 </body>
 </html>

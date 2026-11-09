@@ -182,6 +182,8 @@ td.r,th.r{text-align:right}
 .tabs button{border:0;background:transparent;padding:10px 12px;font:600 14px var(--f-display);letter-spacing:.08em;text-transform:uppercase;color:var(--muted);cursor:pointer;border-bottom:3px solid transparent;white-space:nowrap}
 .tabs button.on{color:var(--ink);border-bottom-color:var(--red)}
 .login{max-width:420px;margin:8vh auto 0}
+.hubframe{display:block;width:100%;height:900px;border:0;background:var(--bg)}
+.viewsw{display:flex;align-items:center;gap:6px}.viewsw span{font:600 12px var(--f-display);letter-spacing:.1em;text-transform:uppercase;opacity:.8}.viewsw select{background:transparent;color:inherit;border:1px solid currentColor;border-radius:6px;padding:4px 8px;font-size:12.5px;max-width:190px}.viewsw select option{color:#1d1a1b;background:#fff}
 .login h1{font-size:48px}
 .sheet td{font-size:12px;white-space:pre-wrap;min-width:60px;max-width:280px;border-left:1px solid var(--line)}
 .sheet th{position:sticky;top:0}
@@ -405,15 +407,17 @@ function chrome(){
   const r=route();const nav=$('#nav');const who=$('#who');
   if(!S.me.role){nav.innerHTML='';who.innerHTML='';return}
   const viewingAthlete=S.me.role==='athlete'||S.viewAs;
-  const links=viewingAthlete?[['today','Today'],['history','My log']]:
-    [['staff','Staff'],['build','Build program'],['roster','Roster & invites'],['setup','Setup']];
+  const links=viewingAthlete?[['today','Today'],['history','My log'],['mydata','Pitch data']]:
+    [['staff','Staff'],['build','Build program'],['roster','Roster & invites'],['pitchdata','Pitch data'],['setup','Setup']];
   nav.innerHTML=links.map(([h,t])=>`<a href="#${h}" class="${(r===h||(!r&&h===links[0][0])||(h==='staff'&&r.startsWith('p-')))?'on':''}">${t}</a>`).join('')+
-    (S.me.role==='coach'&&!S.viewAs?`<a href="${esc(window.__HUB_URL__||'hub.html')}"${window.__HUB_URL__?' target="_blank" rel="noopener"':''}>Pitch data ↗</a>`:'');
-  who.innerHTML=`<span class="em">${esc(S.me.email)}</span><button id="signout">${S.mode==='demo'?'Exit preview':'Sign out'}</button>`;
+''; 
+  const sw=S.me.role==='coach'?`<label class="viewsw" title="Switch between your view and a pitcher's view"><span>View</span><select id="viewSel" aria-label="View as"><option value="">Coach (admin)</option>${S.athletes.slice().sort((a,b)=>a.name.localeCompare(b.name)).map(a=>`<option value="${a.id}" ${S.viewAs===a.id?'selected':''}>${esc(a.name)}</option>`).join('')}</select></label>`:'';
+  who.innerHTML=`${sw}<span class="em">${esc(S.me.email)}</span><button id="signout">${S.mode==='demo'?'Exit preview':'Sign out'}</button>`;
+  const vs=$('#viewSel');if(vs)vs.onchange=()=>{S.viewAs=vs.value||null;go(S.viewAs?'today':'staff');render()};
   $('#signout').onclick=signOut;
   const band=$('#demoBand');
   if(S.mode==='demo'||S.viewAs){band.hidden=false;
-    $('#demoText').textContent=S.viewAs?`Viewing as ${athlete(S.viewAs)?.name}. This is what he sees after signing in.`:'Preview mode: your real Drive data, saved only in this browser. Nothing is sent to the team cloud and no emails go out.';
+    $('#demoText').textContent=S.viewAs?`Player view: ${athlete(S.viewAs)?.name}. This is exactly what he sees. Switch back with the View menu or the button.`:'Preview mode: your real Drive data, saved only in this browser. Nothing is sent to the team cloud and no emails go out.';
     $('#demoBtns').innerHTML=(S.viewAs?`<button id="stopView">Back to coach view</button>`:'')+(S.mode==='demo'?`<button id="resetDemo">Reset preview</button>`:'');
     const sv=$('#stopView');if(sv)sv.onclick=()=>{S.viewAs=null;go('staff')};
     const rd=$('#resetDemo');if(rd)rd.onclick=()=>{lsDel(DEMO_KEY);location.reload()};
@@ -424,11 +428,12 @@ function render(){
   chrome();const app=$('#app');const r=route();
   if(!S.me.role){app.innerHTML=S.mode?noAccessView():loginView();bindLogin();return}
   if(S.me.role==='athlete'||S.viewAs){const aid=S.viewAs||S.me.athleteId;
-    if(r==='history')return athleteHistory(aid);return athleteToday(aid)}
+    if(r==='history')return athleteHistory(aid);if(r==='mydata')return athleteData(aid);return athleteToday(aid)}
   if(r.startsWith('p-'))return playerPage(r.slice(2));
   if(r==='build')return builderView();
   if(r==='roster')return rosterView();
   if(r==='setup')return setupView();
+  if(r==='pitchdata')return pitchDataPage();
   return staffView();
 }
 
@@ -534,7 +539,7 @@ let PTAB='program',PWEEK=null;
 function playerPage(id){
   const a=athlete(id);if(!a){$('#app').innerHTML='<div class="empty">That pitcher isn’t on the roster.</div>';return}
   const prof=a.profile||{};const ws=monday(TODAY);const r=acwr(a.id,ws);const lc=lastCheckin(a.id);
-  const tabs=[['program','Program'],['log','Log'],['cards','Program cards'],['rtt','Return to throw'],['files','Files & original sheet']];
+  const tabs=[['program','Program'],['pitch','Pitch data'],['log','Log'],['cards','Program cards'],['rtt','Return to throw'],['files','Files & original sheet']];
   $('#app').innerHTML=`<div class="stack">
     <div class="spread"><div><a href="#staff" class="sub" style="font-size:13px;text-decoration:none">← Staff</a>
       <h1>${esc(a.name)}</h1>
@@ -561,6 +566,7 @@ function playerPage(id){
   if(PTAB==='cards')t.innerHTML=cardsTab(a,true);
   if(PTAB==='rtt'){t.innerHTML=rttTab(a);bindRtt(a)}
   if(PTAB==='files')t.innerHTML=filesTab(a);
+  if(PTAB==='pitch'){t.innerHTML=pitchDataTab(a,false);bindPitchData(a)}
   bindPlayer(a);
 }
 function loadChart(aid){
@@ -662,6 +668,43 @@ function bindPlayer(a){
   document.querySelectorAll('[data-editcard]').forEach(b=>b.onclick=()=>cardEditor(a,b.dataset.editcard));
   const at=$('#arTab');if(at){const show=()=>$('#arView').innerHTML=renderSheet(a.archive[at.value]);at.onchange=show;show()}
 }
+
+
+/* ============================================================ pitch data (the TrackMan / charting hub, embedded) */
+let HUBTAB='reports';
+function hubFrame(name,view,ro){const q=new URLSearchParams({embed:'1'});if(name)q.set('p',name);if(view)q.set('v',view);if(ro)q.set('ro','1');
+  return `<iframe class="hubframe" id="hubframe" src="hub.html?${q}" title="Pitch data" loading="eager"></iframe>`}
+window.addEventListener('message',e=>{if(e.origin!==location.origin||!e.data||!e.data.hubHeight)return;const f=document.getElementById('hubframe');if(f)f.style.height=Math.max(520,e.data.hubHeight+24)+'px'});
+function pitchDataTab(a,ro){
+  const tabs=[['reports','Reports'],['trends','Trends'],['command','Command'],['aim','Optimal aim']];
+  return `<div class="stack">
+    <div class="panel"><div class="spread"><div class="eyebrow">Fall line · charted intersquads and games</div><span class="sub" style="font-size:12px" id="lineVelo"></span></div><div id="seasonLine" class="kv" style="margin-top:10px"><span class="sub">Loading TrackMan data…</span></div></div>
+    <div class="row" id="hubTabs">${tabs.map(([k,t])=>`<button class="btn small ${HUBTAB===k?'primary':''}" data-hv="${k}">${t}</button>`).join('')}</div>
+    <div class="panel" style="padding:0;overflow:hidden">${hubFrame(a.name,HUBTAB,ro)}</div></div>`;
+}
+function bindPitchData(a){
+  document.querySelectorAll('[data-hv]').forEach(b=>b.onclick=()=>{HUBTAB=b.dataset.hv;document.querySelectorAll('[data-hv]').forEach(x=>x.classList.toggle('primary',x===b));const f=$('#hubframe');if(f)f.contentWindow.postMessage({hubView:HUBTAB},location.origin)});
+  const f=$('#hubframe');if(!f)return;
+  const fill=n=>{let w;try{w=f.contentWindow;if(!w||!w.embedPid)throw 0}catch(e){if(n<20)setTimeout(()=>fill(n+1),500);return}
+    const DB=w.eval('DB');const pid=w.embedPid();const box=$('#seasonLine');if(!box)return;
+    if(!pid){if(n<8)return setTimeout(()=>fill(n+1),700);box.innerHTML='<span class="sub">No TrackMan or charted outings for him yet.</span>';return}
+    const row=(w.pitcherLogRows(DB.sessions,[w.pitcherById(pid)])||[])[0];
+    const outs=(DB.outings||[]).filter(o=>o.pitcherId===pid);let top=0;for(const o of outs)for(const t of ['FB','SI']){const b=(o.byType||{})[t];if(b&&b.veloTop>top)top=b.veloTop}
+    $('#lineVelo').textContent=`${outs.length} TrackMan outing${outs.length===1?'':'s'}${top?` · FB top ${top} mph`:''}`;
+    if(!row){box.innerHTML='<span class="sub">No charted intersquad or game innings yet.</span>';return}
+    const ipTxt=`${Math.floor(row.ip+1e-6)}.${Math.round((row.ip-Math.floor(row.ip+1e-6))*3)}`;
+    const era=row.ip?(row.er*9/row.ip).toFixed(2):'—';const whip=row.ip?((row.h+row.bb)/row.ip).toFixed(2):'—';
+    const k=(v,l)=>`<div><b>${v}</b><span>${l}</span></div>`;
+    box.innerHTML=k(ipTxt,'IP')+k(era,'ERA')+k(whip,'WHIP')+k(row.k,'K')+k(row.bb,'BB')+k(row.h,'H')+k(row.bf,'BF')+k(row.tp?Math.round(row.s/row.tp*100)+'%':'—','Strike %')+k(row.bf?Math.round(row.fps/row.bf*100)+'%':'—','First-pitch K %');
+    if(n<3)setTimeout(()=>fill(9),3000); /* refresh once after the team cloud finishes syncing */
+  };
+  f.addEventListener('load',()=>fill(0));
+}
+function pitchDataPage(){
+  $('#app').innerHTML=`<div class="stack"><div class="spread"><div><h1>Pitch data</h1><p class="sub" style="margin:4px 0 0">TrackMan bullpens and intersquads, live charting, reports, leaderboard, trends, command and optimal aim. Same data as before, now inside the site. Each pitcher's page also has his own Pitch data tab.</p></div></div>
+    <div class="panel" style="padding:0;overflow:hidden">${hubFrame('','',false)}</div></div>`;
+}
+function athleteData(aid){const a=athlete(aid);$('#app').innerHTML=`<div class="stack"><h1>My pitch data</h1>${pitchDataTab(a,true)}</div>`;bindPitchData(a)}
 
 /* ============================================================ drawers */
 function closeLayer(){$('#layer').innerHTML=''}
