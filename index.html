@@ -615,7 +615,8 @@ function cardsTab(a,editable){
       ${prof.warmupNote?`<p class="sub" style="font-size:13px">${esc(prof.warmupNote)}</p>`:''}</div>
     <div class="grid2">${order.map(t=>cards[t]?cardHtml(t,cards[t],editable):(editable?`<div class="excard"><header>${chip(t)}<button class="btn small" data-editcard="${esc(t)}">Add card</button></header></div>`:'')).join('')}</div></div>`;
 }
-function rttProgramFor(a,title){return S.programs.find(p=>p.athlete_id===a.id&&p.source==='rtt'&&p.title===title+' (return to throw)')}
+const rttTitle=t=>/return to throw|rtt/i.test(t)?t:t+' (return to throw)';
+function rttProgramFor(a,title){return S.programs.find(p=>p.athlete_id===a.id&&p.source==='rtt'&&p.title===rttTitle(title))}
 function rttTab(a,coach=true){
   const r=(a.profile||{}).rtt||[];const mv=maxVelo(a.id);
   if(!r.length)return '<div class="empty">No return-to-throw program for him.</div>';
@@ -632,7 +633,7 @@ function bindRtt(a){
   const r=(a.profile||{}).rtt||[];
   document.querySelectorAll('[data-rttsched]').forEach(b=>b.onclick=async()=>{const p=r[+b.dataset.rttsched];const start=monday($('#rttStart'+b.dataset.rttsched).value||TODAY);
     const ex=rttProgramFor(a,p.title);const days=rttToDays(p,start,maxVelo(a.id));
-    const prog=ex||{id:uid(),athlete_id:a.id,title:p.title+' (return to throw)',source:'rtt',created_at:new Date().toISOString()};
+    const prog=ex||{id:uid(),athlete_id:a.id,title:rttTitle(p.title),source:'rtt',created_at:new Date().toISOString()};
     Object.assign(prog,{start_date:start,end_date:addDays(start,7*p.weeks.length-1),days});
     try{await API.saveProgram(prog);toast(`On his calendar from ${md(start)}`);render()}catch(e){toast(e.message)}});
   document.querySelectorAll('[data-rttdel]').forEach(b=>b.onclick=()=>{const p=r[+b.dataset.rttdel];const ex=rttProgramFor(a,p.title);if(!ex)return;
