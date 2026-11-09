@@ -190,6 +190,16 @@ td.r,th.r{text-align:right}
 .vbox video{width:100%;max-height:480px;border-radius:8px;background:#000}
 .bell{display:inline-flex;align-items:center;gap:6px}.bell b{background:var(--red);color:#fff;border-radius:999px;padding:0 7px;font-size:11px}
 @media (max-width:640px){.drow{grid-template-columns:1fr 1fr}.drow .dnote{grid-column:1/-1}}
+.goalband{background:var(--ink);color:var(--bg);border-radius:var(--r);border-left:8px solid var(--red)}
+.goalband-in{display:flex;align-items:center;gap:18px;flex-wrap:wrap;padding:14px 18px}
+.gb-label{font:700 13px var(--f-display);letter-spacing:.16em;text-transform:uppercase;color:var(--red)}
+.gb-list{display:flex;gap:10px 22px;flex-wrap:wrap;flex:1;min-width:0}
+.gb-item{display:flex;align-items:center;gap:8px;font:600 20px/1.15 var(--f-display);letter-spacing:.01em}
+.gb-n{display:inline-flex;align-items:center;justify-content:center;width:24px;height:24px;border-radius:50%;background:var(--red);color:#fff;font:700 13px var(--f-mono);flex:none}
+.gb-empty{opacity:.7}.gb-edit{background:transparent;color:inherit;border-color:currentColor}
+.trow{display:grid;grid-template-columns:1.2fr 1.4fr .7fr .8fr auto;gap:4px}.trow input{min-width:0;padding:6px 7px}
+.ladder{display:flex;gap:4px;flex-wrap:wrap;margin-top:10px}.ladder span{display:flex;flex-direction:column;font:11px var(--f-mono);color:var(--muted);background:var(--soft);border-radius:6px;padding:4px 7px}.ladder span b{color:var(--ink);font-weight:500}.ladder span.on{background:var(--red-soft);outline:1px solid var(--red)}
+@media (max-width:560px){.gb-item{font-size:17px}.trow{grid-template-columns:1fr 1fr}}
 .hubframe{display:block;width:100%;height:900px;border:0;background:var(--bg)}
 .viewsw{display:flex;align-items:center;gap:6px}.viewsw span{font:600 12px var(--f-display);letter-spacing:.1em;text-transform:uppercase;opacity:.8}.viewsw select{background:transparent;color:inherit;border:1px solid currentColor;border-radius:6px;padding:4px 8px;font-size:12.5px;max-width:190px}.viewsw select option{color:#1d1a1b;background:#fff}
 .login h1{font-size:48px}
@@ -533,7 +543,7 @@ function staffView(){
       <td><div class="dots">${dots.map(c=>`<i class="${c}"></i>`).join('')}</div></td>
       <td class="r num">${r.acute}<span class="sub"> / ${planned}</span></td>
       <td class="r">${r.ratio==null?'<span class="sub">—</span>':`<span class="pill ${ratioCls(r.ratio)}">${r.ratio.toFixed(2)}</span>`}</td>
-      <td class="sub" style="font-size:12px">${esc(a.targets&&a.targets.ip?`${a.targets.ip} IP${a.targets.pitches?' · '+a.targets.pitches+'p':''}`:'')}</td>
+      <td style="font-size:12px">${(()=>{const t=targetNow(a);const x=t.cur||t.final;return x&&(x.ip||x.pitches)?`${esc(tgtTxt(x))}${t.next?`<div class="sub">next ${esc(tgtTxt(t.next))} · ${md(t.next.date)}</div>`:''}`:'<span class="sub">—</span>'})()}</td>
     </tr>`).join('');
   $('#app').innerHTML=`<div class="stack">
     <div class="spread"><div><div class="eyebrow">${new Date().toLocaleDateString(undefined,{weekday:'long',month:'long',day:'numeric'})}</div><h1>Staff overview</h1></div>
@@ -558,20 +568,21 @@ function playerPage(id){
     <div class="spread"><div><a href="#staff" class="sub" style="font-size:13px;text-decoration:none">← Staff</a>
       <h1>${esc(a.name)}</h1>
       <div class="row" style="margin-top:6px">${a.role?`<span class="pill role">${a.role==='SP'?'Starter':'Reliever'}</span>`:'<span class="pill">Role not set</span>'}
-        ${a.targets&&a.targets.ip?`<span class="pill">Game target ${a.targets.ip} IP${a.targets.pitches?' · '+a.targets.pitches+' pitches':''}</span>`:''}
         ${a.email?`<span class="pill good">Invited · ${esc(a.email)}</span>`:`<span class="pill warn">No email yet</span>`}</div>
       ${a.role_note?`<p class="sub prose" style="margin:8px 0 0">${esc(a.role_note)}</p>`:''}</div>
       <div class="row"><button class="btn" id="viewAs">See his view</button><a class="btn primary" href="#build" id="buildFor">Build program</a></div></div>
+    ${goalsBanner(a,true)}
     <div class="grid3">
       <div class="panel"><div class="eyebrow">This week's load</div><div class="kv" style="margin-top:8px"><div><b>${r.acute}</b><span>done</span></div><div><b>${weekLoad(a.id,ws,'plan')}</b><span>planned</span></div><div><b>${r.ratio==null||!r.acute?'—':r.ratio.toFixed(2)}</b><span>ratio ${r.ratio!=null&&r.acute?`<span class="pill ${ratioCls(r.ratio)}">${ratioCls(r.ratio)==='good'?'in range':'check'}</span>`:''}</span></div></div></div>
       <div class="panel"><div class="eyebrow">Last check-in</div><div class="row" style="margin-top:8px">${lc?`${ciBadge(lc.checkin)}<span>${md(lc.date)} · ${esc(dayName(lc.date))}</span>`:'<span class="sub">None yet</span>'}</div>${lc&&lc.notes?`<p class="sub" style="margin:6px 0 0;font-size:13px">“${esc(lc.notes)}”</p>`:''}</div>
-      <div class="panel"><div class="eyebrow">Goals</div>${(prof.goals||[]).length?`<ul style="margin:8px 0 0;padding-left:18px">${prof.goals.map(g=>`<li>${esc(g.replace(/^\d+\.\s*/,''))}</li>`).join('')}</ul>`:'<p class="sub" style="margin:8px 0 0">No goals written in his sheet.</p>'}</div>
+      ${targetCard(a,true)}
     </div>
     <div class="panel">${loadChart(a.id)}</div>
     <div class="tabs" id="ptabs">${tabs.map(([k,t])=>`<button data-t="${k}" class="${PTAB===k?'on':''}">${t}</button>`).join('')}</div>
     <div id="ptab"></div>
   </div>`;
   $('#viewAs').onclick=()=>{S.viewAs=a.id;go('today')};
+  const eg=$('#editGoals');if(eg)eg.onclick=()=>goalsEditor(a);const et=$('#editTargets');if(et)et.onclick=()=>targetsEditor(a);
   $('#buildFor').onclick=e=>{e.preventDefault();BUILD.athletes=new Set([a.id]);go('build')};
   document.querySelectorAll('#ptabs button').forEach(b=>b.onclick=()=>{PTAB=b.dataset.t;playerPage(id)});
   const t=$('#ptab');
@@ -862,6 +873,69 @@ function cardEditor(a,type){
 }
 
 
+
+/* ============================================================ goals + game-target ramp */
+const cleanGoal=g=>String(g||'').replace(/^\s*\d+[.)]\s*/,'').trim();
+function goalsOf(a){return ((a.profile||{}).goals||[]).map(cleanGoal).filter(Boolean)}
+function goalsBanner(a,coach){
+  const gs=goalsOf(a);
+  return `<section class="goalband"><div class="goalband-in"><div class="gb-label">${coach?'His goals':'Your goals'}</div>
+    <div class="gb-list">${gs.length?gs.map((g,i)=>`<div class="gb-item"><span class="gb-n">${i+1}</span><span>${esc(g)}</span></div>`).join(''):`<span class="gb-empty">${coach?'No goals set yet.':'Coach hasn’t set goals yet.'}</span>`}</div>
+    ${coach?'<button class="btn small gb-edit" id="editGoals">Edit goals</button>':''}</div></section>`;
+}
+function goalsEditor(a){
+  const gs=goalsOf(a);if(!gs.length)gs.push('');
+  const draw=()=>{openLayer(`<div class="spread"><div><div class="eyebrow">${esc(a.name)}</div><h2>Goals</h2></div><button class="btn small ghost" id="gClose">Close</button></div>
+    <p class="sub" style="margin:0">These show in a banner across the top of his page and his Today screen.</p>
+    <div class="stack" id="gRows">${gs.map((g,i)=>`<div class="row" style="flex-wrap:nowrap"><span class="gb-n">${i+1}</span><input type="text" value="${esc(g)}" data-g="${i}" style="flex:1" placeholder="e.g. Slider in the zone 60%+"><button class="btn small ghost" data-grm="${i}" aria-label="Remove">✕</button></div>`).join('')}</div>
+    <div class="row"><button class="btn small" id="gAdd">Add goal</button></div>
+    <div class="row"><button class="btn primary" id="gSave">Save goals</button></div>`);
+    const sync=()=>document.querySelectorAll('[data-g]').forEach(x=>gs[+x.dataset.g]=x.value);
+    $('#gClose').onclick=closeLayer;$('#gAdd').onclick=()=>{sync();gs.push('');draw();document.querySelector(`[data-g="${gs.length-1}"]`).focus()};
+    document.querySelectorAll('[data-grm]').forEach(b=>b.onclick=()=>{sync();gs.splice(+b.dataset.grm,1);draw()});
+    $('#gSave').onclick=async()=>{sync();a.profile=a.profile||{};a.profile.goals=gs.map(cleanGoal).filter(Boolean);try{await API.saveAthlete(a);closeLayer();toast('Goals saved');render()}catch(e){toast(e.message)}};
+  };draw();
+}
+/* Target ramp: dated steps that build to the Opening Day target. The current target is the latest step on or before today. */
+function targetSteps(a){return ((a.profile||{}).targetPlan||[]).filter(x=>x.date).sort((x,y)=>x.date.localeCompare(y.date))}
+function targetNow(a,date=TODAY){const st=targetSteps(a);let cur=null,next=null;for(const x of st){if(x.date<=date)cur=x;else if(!next)next=x}return {cur,next,final:a.targets||{}}}
+const tgtTxt=t=>t&&(t.ip||t.pitches)?`${t.ip!=null&&t.ip!==''?t.ip+' IP':''}${t.ip&&t.pitches?' · ':''}${t.pitches?t.pitches+' pitches':''}`:'—';
+function suggestRamp(a){
+  const fin=a.targets||{};const ip=+fin.ip||(a.role==='SP'?5:1);const pc=+fin.pitches||Math.round(ip*15);
+  const cal=calendar();const lb=(cal.find(c=>/lives begin/i.test(c.label))||{}).date||'2027-01-19';const od=(cal.find(c=>/opening/i.test(c.label))||{}).date||'2027-02-19';
+  const weeks=[];for(let d=monday(lb);d<od;d=addDays(d,7))weeks.push(d);
+  const startIp=Math.min(ip,a.role==='SP'?1:Math.max(0.3,ip/2)),startPc=Math.min(pc,a.role==='SP'?20:Math.max(15,Math.round(pc*0.6)));
+  const rnd=x=>Math.round(x*3)/3;
+  const steps=weeks.map((d,i)=>{const f=weeks.length>1?i/(weeks.length):0;return {date:d,label:`Lives wk ${i+1}`,ip:+rnd(startIp+(ip-startIp)*f).toFixed(1),pitches:Math.round((startPc+(pc-startPc)*f)/5)*5}});
+  steps.push({date:od,label:'Opening Day',ip,pitches:pc});return steps;
+}
+function targetsEditor(a){
+  let steps=JSON.parse(JSON.stringify(targetSteps(a)));const fin={...(a.targets||{})};
+  const draw=()=>{openLayer(`<div class="spread"><div><div class="eyebrow">${esc(a.name)}</div><h2>Game targets</h2></div><button class="btn small ghost" id="tClose">Close</button></div>
+    <div class="panel stack"><div class="eyebrow">Opening Day target</div><div class="row"><label class="f" style="flex:1">Innings<input type="number" step="0.1" min="0" id="tIp" value="${fin.ip??''}"></label><label class="f" style="flex:1">Pitches<input type="number" min="0" id="tPc" value="${fin.pitches??''}"></label></div>
+      <label class="f">Role note<input type="text" id="tNote" value="${esc(a.role_note||'')}" placeholder="e.g. Frequency arm, 2 of 3 days"></label></div>
+    <div class="spread"><h3>Ramp-up steps</h3><div class="row"><button class="btn small" id="tSuggest">Suggest a build-up</button><button class="btn small" id="tAdd">Add step</button></div></div>
+    <p class="sub" style="margin:0;font-size:12.5px">Each step is his target from that date until the next one. "Suggest a build-up" spreads the lives weeks evenly up to the Opening Day target; edit any row after.</p>
+    <div class="stack">${steps.length?steps.map((x,i)=>`<div class="trow" data-ti="${i}"><input type="date" data-k="date" value="${x.date||''}"><input type="text" data-k="label" value="${esc(x.label||'')}" placeholder="Label"><input type="number" step="0.1" data-k="ip" value="${x.ip??''}" placeholder="IP"><input type="number" data-k="pitches" value="${x.pitches??''}" placeholder="Pitches"><button class="btn small ghost" data-trm="${i}" aria-label="Remove">✕</button></div>`).join(''):'<div class="empty">No steps yet. He just has the Opening Day target.</div>'}</div>
+    <div class="row"><button class="btn primary" id="tSave">Save targets</button></div>`);
+    const sync=()=>{fin.ip=num($('#tIp').value);fin.pitches=num($('#tPc').value);document.querySelectorAll('.trow').forEach(r=>{const x=steps[+r.dataset.ti];r.querySelectorAll('input').forEach(inp=>x[inp.dataset.k]=inp.type==='number'?num(inp.value):inp.value)})};
+    $('#tClose').onclick=closeLayer;
+    $('#tAdd').onclick=()=>{sync();const last=steps[steps.length-1];steps.push({date:last?addDays(last.date,7):monday(TODAY),label:'',ip:last?last.ip:null,pitches:last?last.pitches:null});draw()};
+    $('#tSuggest').onclick=()=>{sync();const tmp={...a,targets:fin};steps=suggestRamp(tmp);draw()};
+    document.querySelectorAll('[data-trm]').forEach(b=>b.onclick=()=>{sync();steps.splice(+b.dataset.trm,1);draw()});
+    $('#tSave').onclick=async()=>{sync();a.targets={...(a.targets||{}),ip:fin.ip,pitches:fin.pitches};a.role_note=$('#tNote').value.trim();a.profile=a.profile||{};a.profile.targetPlan=steps.filter(x=>x.date).sort((x,y)=>x.date.localeCompare(y.date));
+      try{await API.saveAthlete(a);closeLayer();toast('Targets saved');render()}catch(e){toast(e.message)}};
+  };draw();
+}
+function targetCard(a,coach){
+  const {cur,next,final}=targetNow(a);const st=targetSteps(a);
+  return `<div class="panel"><div class="spread"><div class="eyebrow">Game target</div>${coach?'<button class="btn small" id="editTargets">Edit</button>':''}</div>
+    <div class="kv" style="margin-top:8px"><div><b>${cur?tgtTxt(cur):tgtTxt(final)}</b><span>${cur?esc(cur.label||'now')+' · since '+md(cur.date):'Opening Day target'}</span></div>
+    ${next?`<div><b>${tgtTxt(next)}</b><span>next · ${esc(next.label||'')} ${md(next.date)}</span></div>`:''}</div>
+    ${st.length?`<div class="ladder">${st.map(x=>`<span class="${cur&&x===cur?'on':''}" title="${esc(x.label||'')}">${md(x.date)}<b>${tgtTxt(x)}</b></span>`).join('')}</div>`:(coach?'<p class="sub" style="margin:8px 0 0;font-size:12.5px">No ramp-up steps yet. Tap Edit to build one.</p>':'')}
+    ${final&&(final.ip||final.pitches)&&(cur||next)?`<p class="sub" style="margin:8px 0 0;font-size:12.5px">Opening Day: ${tgtTxt(final)}</p>`:''}</div>`;
+}
+
 /* ============================================================ day sections + drill library */
 const SECTIONS=[['prework','Pre-work'],['throwing','Throwing'],['medball','Med ball'],['focus','Bullpen / live focus']];
 const SECLABEL=Object.fromEntries(SECTIONS);
@@ -1099,11 +1173,12 @@ function athleteToday(aid){
   $('#app').innerHTML=`<div class="stack">
     <div class="spread"><div><div class="eyebrow">${new Date().toLocaleDateString(undefined,{weekday:'long',month:'long',day:'numeric'})}</div><h1>${esc((a.nickname||a.name.split(' ')[0]))}, here's today</h1></div>
       ${next?`<span class="pill">${daysBetween(TODAY,next.date)} days to ${esc(next.label.toLowerCase())}</span>`:''}</div>
+    ${goalsBanner(a,false)}
     <div class="today-hero">
       <div class="panel stack">
         <div class="eyebrow">Today's throwing</div>
         ${p&&p.type?`<div class="big-type" style="color:var(--t-${TVAR[p.type]||'rest'})">${esc(p.type)}</div>`:'<div class="big-type sub">No plan today</div>'}
-        <div class="kv">${t?`<div><b>${esc(t.rpe||'—')}</b><span>effort</span></div>`:''}${p&&p.intensity?`<div><b>${p.intensity}%</b><span>target effort</span></div>`:''}${p&&p.throws?`<div><b>${p.throws}</b><span>throws</span></div>`:''}${p&&p.rtt&&p.rtt.throws?`<div><b>${p.rtt.throws}</b><span>throws</span></div>`:''}${p&&p.rtt&&p.rtt.velo?`<div><b>${p.rtt.velo}</b><span>mph target${p.rtt.intentThrows&&p.rtt.intentThrows<p.rtt.throws?' · '+p.rtt.intentThrows+' throws':''}</span></div>`:''}${a.targets&&a.targets.ip?`<div><b>${a.targets.ip} IP</b><span>game target${a.targets.pitches?' · '+a.targets.pitches+'p':''}</span></div>`:''}</div>
+        <div class="kv">${t?`<div><b>${esc(t.rpe||'—')}</b><span>effort</span></div>`:''}${p&&p.intensity?`<div><b>${p.intensity}%</b><span>target effort</span></div>`:''}${p&&p.throws?`<div><b>${p.throws}</b><span>throws</span></div>`:''}${p&&p.rtt&&p.rtt.throws?`<div><b>${p.rtt.throws}</b><span>throws</span></div>`:''}${p&&p.rtt&&p.rtt.velo?`<div><b>${p.rtt.velo}</b><span>mph target${p.rtt.intentThrows&&p.rtt.intentThrows<p.rtt.throws?' · '+p.rtt.intentThrows+' throws':''}</span></div>`:''}${(()=>{const t=targetNow(a);const x=t.cur||t.final;return x&&(x.ip||x.pitches)?`<div><b>${tgtTxt(x)}</b><span>${t.cur?'current game target':'game target'}</span></div>`:''})()}</div>
         ${p&&p.notes?`<p style="margin:0"><b>Coach:</b> ${esc(p.notes)}</p>`:''}
         ${p?sectionsHtml(p):''}
         ${card&&!drillCount(p.sections)?cardHtml(p.type,card,false):''}
@@ -1113,7 +1188,7 @@ function athleteToday(aid){
       <div class="panel stack"><div class="spread"><h2>${logged?'Today’s log':'Log today'}</h2>${logged?'<span class="pill good">Logged</span>':''}</div>${logForm(aid,TODAY,'tl')}<button class="btn primary" id="tSave">${logged?'Update log':'Save log'}</button></div>
     </div>
     <div class="panel"><h2>This week</h2><div style="overflow-x:auto"><div class="cal" style="grid-template-columns:repeat(7,minmax(92px,1fr));min-width:680px">${strip}</div></div></div>
-    ${(prof.goals||[]).length?`<div class="panel"><h2>Your goals</h2><ul style="margin:0;padding-left:18px">${prof.goals.map(g=>`<li>${esc(g.replace(/^\d+\.\s*/,''))}</li>`).join('')}</ul></div>`:''}
+    ${targetCard(a,false)}
     
   </div>`;
   bindLogForm('tl');
