@@ -903,10 +903,10 @@ const tgtTxt=t=>t&&(t.ip||t.pitches)?`${t.ip!=null&&t.ip!==''?t.ip+' IP':''}${t.
 function suggestRamp(a){
   const fin=a.targets||{};const ip=+fin.ip||(a.role==='SP'?5:1);const pc=+fin.pitches||Math.round(ip*15);
   const cal=calendar();const lb=(cal.find(c=>/lives begin/i.test(c.label))||{}).date||'2027-01-19';const od=(cal.find(c=>/opening/i.test(c.label))||{}).date||'2027-02-19';
-  const weeks=[];for(let d=monday(lb);d<od;d=addDays(d,7))weeks.push(d);
-  const startIp=Math.min(ip,a.role==='SP'?1:Math.max(0.3,ip/2)),startPc=Math.min(pc,a.role==='SP'?20:Math.max(15,Math.round(pc*0.6)));
-  const rnd=x=>Math.round(x*3)/3;
-  const steps=weeks.map((d,i)=>{const f=weeks.length>1?i/(weeks.length):0;return {date:d,label:`Lives wk ${i+1}`,ip:+rnd(startIp+(ip-startIp)*f).toFixed(1),pitches:Math.round((startPc+(pc-startPc)*f)/5)*5}});
+  const le=(cal.find(c=>/lives end/i.test(c.label))||{}).date||od;
+  const weeks=[];for(let d=lb;d<le&&d<od;d=addDays(d,7))weeks.push(d);
+  const startIp=Math.min(ip,1),startPc=Math.min(pc,a.role==='SP'||ip>=2?20:15);
+  const steps=weeks.map((d,i)=>{const f=weeks.length?i/weeks.length:0;return {date:d,label:`Lives wk ${i+1}`,ip:Math.max(1,Math.round(startIp+(ip-startIp)*f)),pitches:Math.round((startPc+(pc-startPc)*f)/5)*5}});
   steps.push({date:od,label:'Opening Day',ip,pitches:pc});return steps;
 }
 function targetsEditor(a){
