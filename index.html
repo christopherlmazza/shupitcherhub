@@ -9,7 +9,7 @@
   --bg:#f5f4f3; --panel:#ffffff; --ink:#1d1a1b; --muted:#6b6466; --line:#e4dfdf; --soft:#efebea;
   --red:#c8102e; --red-ink:#ffffff; --red-soft:#fbe9ec;
   --good:#1f7a4d; --good-soft:#e3f3ea; --warn:#a96400; --warn-soft:#fdf0d9; --bad:#b4142f; --bad-soft:#fbe4e8;
-  --t-rest:#9a9294; --t-recovery:#2f8f6b; --t-hybb:#3b6fb6; --t-hyba:#5b4bb0; --t-pen:#c07a12; --t-velo:#d2541c; --t-live:#c8102e;
+  --t-rest:#9a9294; --t-recovery:#2f8f6b; --t-hybb:#3b6fb6; --t-hyba:#5b4bb0; --t-pen:#c07a12; --t-velo:#d2541c; --t-live:#c8102e; --t-rtt:#0e7c86;
   --f-display:"Barlow Condensed","Arial Narrow",Arial,sans-serif;
   --f-body:"Inter",system-ui,-apple-system,"Segoe UI",sans-serif;
   --f-mono:"JetBrains Mono",ui-monospace,Menlo,Consolas,monospace;
@@ -19,13 +19,13 @@
   --bg:#141213; --panel:#1d1a1b; --ink:#f1ecec; --muted:#a59c9e; --line:#332e2f; --soft:#262223;
   --red:#e2344f; --red-ink:#ffffff; --red-soft:#3a1a20;
   --good:#4cc08a; --good-soft:#163024; --warn:#e6a23a; --warn-soft:#352612; --bad:#ff6b80; --bad-soft:#3a1820;
-  --t-rest:#7c7476; --t-recovery:#46b88e; --t-hybb:#6a9be0; --t-hyba:#8f80e6; --t-pen:#e0a03c; --t-velo:#ef7a45; --t-live:#ff5069;
+  --t-rest:#7c7476; --t-recovery:#46b88e; --t-hybb:#6a9be0; --t-hyba:#8f80e6; --t-pen:#e0a03c; --t-velo:#ef7a45; --t-live:#ff5069; --t-rtt:#35b3bd;
   color-scheme:dark}}
 :root[data-theme="dark"]{
   --bg:#141213; --panel:#1d1a1b; --ink:#f1ecec; --muted:#a59c9e; --line:#332e2f; --soft:#262223;
   --red:#e2344f; --red-ink:#ffffff; --red-soft:#3a1a20;
   --good:#4cc08a; --good-soft:#163024; --warn:#e6a23a; --warn-soft:#352612; --bad:#ff6b80; --bad-soft:#3a1820;
-  --t-rest:#7c7476; --t-recovery:#46b88e; --t-hybb:#6a9be0; --t-hyba:#8f80e6; --t-pen:#e0a03c; --t-velo:#ef7a45; --t-live:#ff5069;
+  --t-rest:#7c7476; --t-recovery:#46b88e; --t-hybb:#6a9be0; --t-hyba:#8f80e6; --t-pen:#e0a03c; --t-velo:#ef7a45; --t-live:#ff5069; --t-rtt:#35b3bd;
   color-scheme:dark}
 *{box-sizing:border-box}
 html,body{margin:0}
@@ -85,7 +85,7 @@ input[type=range]{accent-color:var(--red);width:100%}
 /* day-type chips */
 .chip{display:inline-flex;align-items:center;gap:6px;font:600 12px/1 var(--f-display);letter-spacing:.06em;text-transform:uppercase;padding:5px 8px;border-radius:5px;color:#fff;white-space:nowrap;background:var(--t-rest)}
 .chip.t-recovery{background:var(--t-recovery)}.chip.t-hybrid-b{background:var(--t-hybb)}.chip.t-hybrid-a{background:var(--t-hyba)}
-.chip.t-bullpen{background:var(--t-pen)}.chip.t-velo{background:var(--t-velo)}.chip.t-live-game{background:var(--t-live)}
+.chip.t-bullpen{background:var(--t-pen)}.chip.t-velo{background:var(--t-velo)}.chip.t-live-game{background:var(--t-live)}.chip.t-return-to-throw{background:var(--t-rtt)}
 .chip.none{background:transparent;color:var(--muted);border:1px dashed var(--line)}
 .pill{display:inline-flex;align-items:center;gap:5px;font-size:12px;font-weight:600;padding:2px 9px;border-radius:999px;background:var(--soft);color:var(--muted);white-space:nowrap}
 .pill.good{background:var(--good-soft);color:var(--good)}.pill.warn{background:var(--warn-soft);color:var(--warn)}.pill.bad{background:var(--bad-soft);color:var(--bad)}
@@ -213,7 +213,10 @@ const CLOUD = {
 };
 const DEFAULT_TYPES = [
   {name:'Rest',load:0,rpe:'—'},{name:'Recovery',load:5,rpe:'Light'},{name:'Hybrid B',load:8,rpe:'60–70%'},
-  {name:'Hybrid A',load:12,rpe:'80–90%'},{name:'Bullpen',load:15,rpe:'Mound'},{name:'Velo',load:18,rpe:'High intent'},{name:'Live/Game',load:25,rpe:'Compete'}];
+  {name:'Hybrid A',load:12,rpe:'80–90%'},{name:'Bullpen',load:15,rpe:'Mound'},{name:'Velo',load:18,rpe:'High intent'},{name:'Live/Game',load:25,rpe:'Compete'},
+  {name:'Return to throw',load:'auto',rpe:'Per throw'}];
+const RTT='Return to throw';
+const TVAR={'Rest':'rest','Recovery':'recovery','Hybrid B':'hybb','Hybrid A':'hyba','Bullpen':'pen','Velo':'velo','Live/Game':'live','Return to throw':'rtt'};
 const DEFAULT_CAL = [{date:'2026-12-04',label:'Ramp-ups complete'},{date:'2027-01-19',label:'Lives begin'},{date:'2027-02-16',label:'Lives end'},{date:'2027-02-19',label:'Opening Day'}];
 const DAYS=['Mon','Tue','Wed','Thu','Fri','Sat','Sun'];
 const DEMO_KEY='shuhub_demo_v1';
@@ -245,7 +248,7 @@ const S={mode:null,me:{email:'',role:null,athleteId:null},athletes:[],programs:[
 let sb=null;
 
 function indexLogs(){S.logIdx={};for(const l of S.logs)S.logIdx[l.athlete_id+'|'+l.date]=l}
-function types(){return (S.settings.workloadTypes&&S.settings.workloadTypes.length)?S.settings.workloadTypes:DEFAULT_TYPES}
+function types(){const t=(S.settings.workloadTypes&&S.settings.workloadTypes.length)?S.settings.workloadTypes:DEFAULT_TYPES;return t.some(x=>x.name===RTT)?t:[...t,DEFAULT_TYPES.find(x=>x.name===RTT)]}
 function calendar(){return S.settings.calendar||DEFAULT_CAL}
 function athlete(id){return S.athletes.find(a=>a.id===id)}
 
@@ -312,11 +315,79 @@ async function cloudLoad(){
 }
 
 /* ============================================================ workload math (same rules as the Google Sheet) */
-function pts(t){const x=types().find(y=>y.name===t);return x?+x.load:0}
+function pts(t){const x=types().find(y=>y.name===t);return x&&x.load!=='auto'?+x.load:0}
+
+/* Return-to-throw workload, per throw.
+   Model from the published interval-throwing workload study (IJSPT): elbow varus torque per throw,
+   flat ground by distance  τ = −0.000579x² + 0.194x + 36.23  (x in ft, 30–300),
+   mound by effort          τ = 74 × (0.28·effort% + 72) / 100  (74 Nm = max-effort pitch),
+   workload per throw = (τ/74)^1.3, summed for the day.
+   K converts to the team's day-type points: 50 catch-play throws ≈ 8 (Hybrid B),
+   a 75-pitch outing plus warm-up ≈ 25 (Live/Game). */
+const K_PTS=0.27;
+const tauDist=ft=>{const x=Math.max(30,Math.min(300,ft||60));return -0.000579*x*x+0.194*x+36.23};
+const tauEffort=e=>74*(0.28*Math.max(0,Math.min(100,e))+72)/100;
+const wThrow=t=>Math.pow(t/74,1.3);
+function rttLoad(r,maxV){
+  if(!r)return 0;const total=+r.throws||0;const it=Math.min(total||+r.intentThrows||0,+r.intentThrows||0);const low=Math.max(0,total-it);
+  const eff=r.velo&&maxV?Math.min(100,r.velo/maxV*100):(r.effort!=null&&r.effort!==''?+r.effort:null);
+  let s=low*wThrow(tauDist(r.dist||60));
+  if(it)s+=it*wThrow(tauEffort(eff!=null?eff:80));
+  return Math.round(s*K_PTS*10)/10;
+}
+/* A builder day typed "Return to throw" with only throws and effort %: ≤60% = catch play at 90 ft, above that = effort-based. */
+function genericRttLoad(c){const n=+c.throws||0;if(!n)return 0;const e=c.intensity!=null&&c.intensity!==''?+c.intensity:null;
+  return Math.round(n*(e!=null&&e>60?wThrow(tauEffort(e)):wThrow(tauDist(90)))*K_PTS*10)/10}
+function cellLoad(c,maxV){if(!c||!c.type)return 0;if(c.type!==RTT)return pts(c.type);if(c.rtt)return rttLoad(c.rtt,maxV);return genericRttLoad(c)}
+let HUBVELO={};
+function maxVelo(aid){const a=athlete(aid);const o=a&&a.profile&&+a.profile.maxVelo;if(o)return o;if(!a)return null;const last=a.name.split(' ').slice(-1)[0].toLowerCase();return HUBVELO[last]||null}
+async function loadHubVelo(){try{const r=await fetch(CLOUD.url+'/rest/v1/pt_state?id=eq.shu-main&select=data',{headers:{apikey:CLOUD.key,Authorization:'Bearer '+CLOUD.key}});if(!r.ok)return;const d=(await r.json())[0]?.data;if(!d)return;
+  const v={};for(const x of d.roster||[]){let top=0;for(const q of d.outings||[]){if(q.pitcherId!==x.id)continue;for(const t of ['FB','SI']){const b=(q.byType||{})[t];if(b&&b.veloTop>top)top=b.veloTop}}if(top)v[String(x.name).split(' ').slice(-1)[0].toLowerCase()]=top}
+  HUBVELO=v;if(S.me.role)render()}catch(e){}}
+
+/* Read a return-to-throw sheet cell group into numbers the workload model can use. Best guess; the coach can edit each day. */
+function parseRttDay(entries){
+  const txt=entries.map(e=>e.text).join(' | ');
+  if(!entries.length||entries.every(e=>/^\s*off\s*$/i.test(e.text)))return null;
+  const byCat=c=>entries.filter(e=>new RegExp(c,'i').test(e.cat)).map(e=>e.text).join(' | ');
+  const mid=(a,b)=>Math.round((+a+ +b)/2);
+  let throws=null;const th=byCat('throw');
+  let m;
+  if((m=th.match(/(\d+)\s*-\s*(\d+)\s*total/i)))throws=mid(m[1],m[2]);
+  else if((m=th.match(/(\d+)\s*total/i)))throws=+m[1];
+  else if(/oz/i.test(th)&&(m=[...th.matchAll(/oz\s*(\d+)/gi)]).length)throws=m.reduce((s,x)=>s+ +x[1],0);
+  else if((m=th.match(/(\d+)\s*-\s*(\d+)(?!\s*(ft|mph))/i)))throws=mid(m[1],m[2]);
+  else if((m=th.match(/^\s*(\d+)\s*(?:total|throws)?\s*(?:\||$)/i)))throws=+m[1];
+  if(throws==null){if((m=txt.match(/(\d+)\s*-\s*(\d+)\s*total/i)))throws=mid(m[1],m[2]);else{const t2=[...txt.matchAll(/(\d+)\s*(?:total\s*)?throws|(\d+)\s*total/gi)];if(t2.length){const x=t2[t2.length-1];throws=+(x[1]||x[2])}}}
+  let velo=null;
+  const vs=[...txt.matchAll(/(\d{2})\s*-\s*(\d{2})(?!\s*ft)/g)].map(x=>[+x[1],+x[2]]).filter(([a,b])=>a>=55&&b<=99&&b>=a);
+  if((m=txt.match(/high\s*(\d)s?\s*low\s*(\d)s?/i)))velo=+m[1]*10+8;
+  else if((m=txt.match(/low\s*(\d)0'?s/i)))velo=+m[1]*10+2;
+  else if(vs.length)velo=Math.max(...vs.map(([a,b])=>mid(a,b)));
+  else if((m=txt.match(/up to\s*(\d{2})/i)))velo=+m[1];
+  let intent=null;
+  if((m=txt.match(/last\s*(\d+)/i)))intent=+m[1];
+  else if(velo&&(m=txt.match(/\d{2}\s*-\s*\d{2}[.,]?\s*(\d+)\s*(total|\.)/i)))intent=+m[1];
+  const mound=/mound|slope/i.test(txt);
+  if(velo&&intent==null)intent=mound?Math.min(15,throws||15):(throws||null);
+  if(throws==null&&intent)throws=intent;
+  const dists=[...txt.matchAll(/(\d+)\s*(?:-\s*(\d+))?\s*ft/gi)].map(x=>+(x[2]||x[1]));
+  return {sections:entries,throws:throws||0,intentThrows:intent||0,velo:velo||null,dist:dists.length?Math.max(...dists):60,mound};
+}
+function rttToDays(rtt,startMonday,maxV){
+  const days={};rtt.weeks.forEach((w,k)=>DAYS.forEach((d,i)=>{const date=addDays(startMonday,7*k+i);const e=w.days[d]||[];const r=parseRttDay(e);
+    days[date]=r?{type:RTT,rtt:r,load:rttLoad(r,maxV),notes:`${w.label}`}:{type:'Rest',notes:`${w.label}${e.length?': '+e.map(x=>x.text).join(', '):''}`}}));
+  return days;
+}
 function planDay(aid,date){let best=null;for(const p of S.programs){if(p.athlete_id!==aid||!p.days||!p.days[date])continue;if(!best||String(p.created_at||'')>String(best.created_at||''))best=p}return best?{...best.days[date],program:best}:null}
 function logFor(aid,date){return S.logIdx[aid+'|'+date]||null}
 function doneType(aid,date){const l=logFor(aid,date);if(l&&l.type)return l.type;const p=planDay(aid,date);return p?p.type:null}
-function weekLoad(aid,ws,mode='actual'){let s=0;for(let i=0;i<7;i++){const d=addDays(ws,i);s+=pts(mode==='plan'?(planDay(aid,d)||{}).type:doneType(aid,d))}return s}
+function planLoad(aid,date){const p=planDay(aid,date);return p?cellLoad(p,maxVelo(aid)):0}
+function dayLoad(aid,date){const l=logFor(aid,date);const p=planDay(aid,date);
+  if(l&&l.type&&(!p||l.type!==p.type))return l.type===RTT?genericRttLoad({throws:l.throws,intensity:l.intensity}):pts(l.type);
+  if(p&&p.type===RTT&&l&&l.throws!=null&&p.rtt&&p.rtt.throws)return Math.round(cellLoad(p,maxVelo(aid))*l.throws/p.rtt.throws*10)/10;
+  return p?cellLoad(p,maxVelo(aid)):0}
+function weekLoad(aid,ws,mode='actual'){let s=0;for(let i=0;i<7;i++){const d=addDays(ws,i);s+=mode==='plan'?planLoad(aid,d):dayLoad(aid,d)}return Math.round(s*10)/10}
 function weekThrows(aid,ws){let s=0,any=false;for(let i=0;i<7;i++){const d=addDays(ws,i);const l=logFor(aid,d);const p=planDay(aid,d);const v=l&&l.throws!=null?l.throws:(p&&p.throws!=null?p.throws:null);if(v!=null){s+=+v;any=true}}return any?s:null}
 function firstWeek(aid){let f=null;for(const p of S.programs)if(p.athlete_id===aid&&(!f||p.start_date<f))f=p.start_date;for(const l of S.logs)if(l.athlete_id===aid&&(!f||l.date<f))f=l.date;return f?monday(f):null}
 /* Acute = this week's load. Chronic = average of up to 4 weeks ending this week (the sheet's formula). Flag outside 0.8–1.3. */
@@ -488,7 +559,7 @@ function playerPage(id){
   if(PTAB==='program')t.innerHTML=programTab(a);
   if(PTAB==='log')t.innerHTML=logTab(a);
   if(PTAB==='cards')t.innerHTML=cardsTab(a,true);
-  if(PTAB==='rtt')t.innerHTML=rttTab(a);
+  if(PTAB==='rtt'){t.innerHTML=rttTab(a);bindRtt(a)}
   if(PTAB==='files')t.innerHTML=filesTab(a);
   bindPlayer(a);
 }
@@ -513,7 +584,7 @@ function weekCal(aid,startWs,weeks,editable){
   for(let k=0;k<weeks;k++){const ws=addDays(startWs,7*k);h+=`<div class="wk">${md(ws)}</div>`;
     for(let i=0;i<7;i++){const d=addDays(ws,i);const p=planDay(aid,d);const l=logFor(aid,d);
       const shown=(l&&l.type)||(p&&p.type);
-      const meta=[p&&p.throws?p.throws+' thr':'',p&&p.intensity?p.intensity+'%':'',l&&l.pitches?l.pitches+'p':'',l&&l.innings?l.innings+' IP':''].filter(Boolean).join(' · ');
+      const meta=[p&&p.rtt&&p.rtt.throws?p.rtt.throws+' thr · '+cellLoad(p,maxVelo(aid))+' pts':'',p&&p.throws?p.throws+' thr':'',p&&p.intensity?p.intensity+'%':'',l&&l.pitches?l.pitches+'p':'',l&&l.innings?l.innings+' IP':''].filter(Boolean).join(' · ');
       h+=`<div class="d ${d===TODAY?'today':''}" data-day="${d}" data-aid="${aid}"><span class="dn">${md(d)}</span>${shown?chip(shown,l&&l.type&&p&&p.type&&l.type!==p.type?' *':''):'<span class="sub" style="font-size:11px">—</span>'}${meta?`<span class="meta mono">${esc(meta)}</span>`:''}${l&&l.checkin!=null?ciBadge(l.checkin):''}</div>`}
     const r=acwr(aid,ws);h+=`<div class="tot"><span class="num"><b>${weekLoad(aid,ws)}</b><span class="sub">/${weekLoad(aid,ws,'plan')}</span></span>${r.ratio!=null&&r.acute?`<span class="pill ${ratioCls(r.ratio)}">${r.ratio.toFixed(2)}</span>`:''}</div>`}
   return h+'</div>';
@@ -544,10 +615,28 @@ function cardsTab(a,editable){
       ${prof.warmupNote?`<p class="sub" style="font-size:13px">${esc(prof.warmupNote)}</p>`:''}</div>
     <div class="grid2">${order.map(t=>cards[t]?cardHtml(t,cards[t],editable):(editable?`<div class="excard"><header>${chip(t)}<button class="btn small" data-editcard="${esc(t)}">Add card</button></header></div>`:'')).join('')}</div></div>`;
 }
-function rttTab(a){
-  const r=(a.profile||{}).rtt||[];
+function rttProgramFor(a,title){return S.programs.find(p=>p.athlete_id===a.id&&p.source==='rtt'&&p.title===title+' (return to throw)')}
+function rttTab(a,coach=true){
+  const r=(a.profile||{}).rtt||[];const mv=maxVelo(a.id);
   if(!r.length)return '<div class="empty">No return-to-throw program for him.</div>';
-  return `<div class="stack">${r.map(p=>`<div class="panel"><h2>${esc(p.title)}</h2><div class="stack">${p.weeks.map(w=>`<div><h3 style="margin-bottom:6px">${esc(w.label)}</h3><div style="overflow-x:auto"><div class="rtt">${DAYS.map(d=>`<div><b>${d}</b>${(w.days[d]||[]).map(x=>`${x.cat?`<span class="sub">${esc(x.cat)}:</span> `:''}${esc(x.text)}`).join('<br>')||'<span class="sub">—</span>'}</div>`).join('')}</div></div></div>`).join('')}</div></div>`).join('')}</div>`;
+  return `<div class="stack">${r.map((p,pi)=>{const sched=rttProgramFor(a,p.title);
+    const start=sched?sched.start_date:monday(TODAY);const days=rttToDays(p,start,mv);
+    const wkLoads=p.weeks.map((w,k)=>{let s=0;for(let i=0;i<7;i++)s+=(days[addDays(start,7*k+i)].load||0);return Math.round(s*10)/10});
+    return `<div class="panel stack"><div class="spread"><div><h2>${esc(p.title)}</h2>
+      <p class="sub" style="margin:4px 0 0;font-size:13px">${sched?`On his calendar: Block 1 starts ${md(sched.start_date)}, ends ${md(sched.end_date)}.`:'Not on his calendar yet.'} Top velo used for effort: <b>${mv?mv+' mph':'unknown'}</b>${mv&&!(a.profile||{}).maxVelo?' (TrackMan)':''}.</p></div>
+      ${coach?`<div class="row" style="align-items:flex-end"><label class="f">Block 1 starts (Monday)<input type="date" id="rttStart${pi}" value="${start}"></label><button class="btn primary" data-rttsched="${pi}">${sched?'Move':'Put on calendar'}</button>${sched?`<button class="btn danger" data-rttdel="${pi}">Take off calendar</button>`:''}</div>`:''}</div>
+      ${p.weeks.map((w,k)=>`<div><div class="spread" style="margin-bottom:6px"><h3>${esc(w.label)}</h3><span class="pill">${wkLoads[k]} pts</span></div><div style="overflow-x:auto"><div class="rtt">${DAYS.map((d,i)=>{const dd=days[addDays(start,7*k+i)];return `<div><b>${d}${dd&&dd.load?` · ${dd.load} pts`:''}</b>${(w.days[d]||[]).map(x=>`${x.cat?`<span class="sub">${esc(x.cat)}:</span> `:''}${esc(x.text)}`).join('<br>')||'<span class="sub">—</span>'}</div>`}).join('')}</div></div></div>`).join('')}
+      <p class="sub" style="margin:0;font-size:12px">Workload per throw from estimated elbow torque: flat-ground throws by distance, velo-target throws by effort (target ÷ top velo). Tap any day on his calendar to adjust throws, velo or distance.</p></div>`}).join('')}</div>`;
+}
+function bindRtt(a){
+  const r=(a.profile||{}).rtt||[];
+  document.querySelectorAll('[data-rttsched]').forEach(b=>b.onclick=async()=>{const p=r[+b.dataset.rttsched];const start=monday($('#rttStart'+b.dataset.rttsched).value||TODAY);
+    const ex=rttProgramFor(a,p.title);const days=rttToDays(p,start,maxVelo(a.id));
+    const prog=ex||{id:uid(),athlete_id:a.id,title:p.title+' (return to throw)',source:'rtt',created_at:new Date().toISOString()};
+    Object.assign(prog,{start_date:start,end_date:addDays(start,7*p.weeks.length-1),days});
+    try{await API.saveProgram(prog);toast(`On his calendar from ${md(start)}`);render()}catch(e){toast(e.message)}});
+  document.querySelectorAll('[data-rttdel]').forEach(b=>b.onclick=()=>{const p=r[+b.dataset.rttdel];const ex=rttProgramFor(a,p.title);if(!ex)return;
+    confirmBox('Take this return-to-throw program off his calendar? Anything he logged stays.','Take off calendar',async()=>{await API.deleteProgram(ex.id);toast('Removed from calendar');render()})});
 }
 function filesTab(a){
   const d=(a.profile||{}).drive||{};const ar=a.archive||{};const tabsList=Object.keys(ar);
@@ -599,14 +688,27 @@ function readLogForm(prefix,aid,date){
   return {athlete_id:aid,date,type:t?t.dataset.v:null,checkin:c?+c.dataset.v:null,throws:num($('#'+prefix+'throws').value),intensity:num($('#'+prefix+'int').value),
     innings:num($('#'+prefix+'ip').value),pitches:num($('#'+prefix+'pc').value),bullpen:$('#'+prefix+'pen').value.trim()||null,notes:$('#'+prefix+'notes').value.trim()||null,source:'app'};
 }
+
+function rttDetailHtml(p,aid){const r=p.rtt;if(!r)return '';
+  return `<div class="excard"><header>${chip(RTT)}<span class="sub" style="font-size:12.5px">${esc(p.notes||'')}</span></header><div class="exs">${r.sections.map(x=>`<div class="ex"><span class="nm">${esc(x.cat||'Note')}</span><span class="nt" style="grid-column:auto">${esc(x.text)}</span></div>`).join('')}</div></div>`}
+function rttInputs(p,aid){const r=p.rtt;const mv=maxVelo(aid);
+  return `<div class="panel stack"><div class="spread"><div class="eyebrow">Workload inputs</div><span class="pill" id="rLoad">${rttLoad(r,mv)} pts</span></div>
+    <div class="row"><label class="f" style="flex:1">Total throws<input type="number" id="rT" value="${r.throws||''}"></label><label class="f" style="flex:1">Catch-play distance (ft)<input type="number" id="rD" value="${r.dist||''}"></label></div>
+    <div class="row"><label class="f" style="flex:1">Throws at velo target<input type="number" id="rI" value="${r.intentThrows||''}"></label><label class="f" style="flex:1">Velo target (mph)<input type="number" id="rV" value="${r.velo||''}"></label></div>
+    <p class="sub" style="margin:0;font-size:12px">Effort = velo target ÷ top velo (${mv?mv+' mph':'not set'}). Throws at the target count by effort; the rest count as catch play at the distance.</p>
+    <div><button class="btn small" id="rSave">Save plan for this day</button></div></div>`}
 function dayDrawer(aid,date){
   const a=athlete(aid);const p=planDay(aid,date);const card=p&&p.type&&((a.profile||{}).cards||{})[p.type];
   openLayer(`<div class="spread"><div><div class="eyebrow">${esc(a.nickname||a.name)}</div><h2>${dayName(date)} ${md(date)}</h2></div><button class="btn small ghost" id="dClose">Close</button></div>
     <div class="panel"><div class="eyebrow">Planned</div><div class="row" style="margin-top:6px">${chip(p&&p.type)}${p&&p.throws?`<span class="mono">${p.throws} throws</span>`:''}${p&&p.intensity?`<span class="mono">${p.intensity}%</span>`:''}</div>${p&&p.notes?`<p style="margin:8px 0 0">${esc(p.notes)}</p>`:''}${p?`<p class="sub" style="font-size:12px;margin:6px 0 0">${esc(p.program.title)}</p>`:''}</div>
     ${card?cardHtml(p.type,card,false):''}
+    ${p&&p.rtt?rttDetailHtml(p,aid)+(S.me.role==='coach'&&!S.viewAs?rttInputs(p,aid):''):''}
     <h3>Log</h3>${logForm(aid,date,'dl')}
     <div class="row"><button class="btn primary" id="dSave">Save log</button></div>`);
   bindLogForm('dl');$('#dClose').onclick=closeLayer;
+  if(p&&p.rtt&&$('#rSave')){const read=()=>({...p.rtt,throws:num($('#rT').value)||0,dist:num($('#rD').value)||60,intentThrows:num($('#rI').value)||0,velo:num($('#rV').value)});
+    ['rT','rD','rI','rV'].forEach(id=>$('#'+id).oninput=()=>$('#rLoad').textContent=rttLoad(read(),maxVelo(aid))+' pts');
+    $('#rSave').onclick=async()=>{const prog=p.program;const r=read();prog.days[date]={...prog.days[date],rtt:r,load:rttLoad(r,maxVelo(aid))};try{await API.saveProgram(prog);toast('Day updated');closeLayer();render()}catch(e){toast(e.message)}}}
   $('#dSave').onclick=async()=>{try{await API.saveLog(readLogForm('dl',aid,date));closeLayer();toast('Saved');render()}catch(e){toast(e.message)}};
 }
 function cardEditor(a,type){
@@ -690,23 +792,23 @@ function drawBuilderGrid(){
   let h=`<div class="cal-h"></div>${DAYS.map(d=>`<div class="h" style="font:600 12px var(--f-display);letter-spacing:.1em;text-transform:uppercase;color:var(--muted);padding:4px 6px">${d}</div>`).join('')}<div class="h" style="font:600 12px var(--f-display);letter-spacing:.1em;text-transform:uppercase;color:var(--muted);padding:4px 6px">Week</div>`;
   BUILD.grid.forEach((w,k)=>{const ws=addDays(BUILD.start,7*k);
     h+=`<div class="wk mono" style="font-size:12px;color:var(--muted);padding:8px 2px">Wk ${k+1}<br>${md(ws)}</div>`;
-    w.forEach((c,i)=>{const d=addDays(ws,i);const col=c.type?`var(--t-${({'Rest':'rest','Recovery':'recovery','Hybrid B':'hybb','Hybrid A':'hyba','Bullpen':'pen','Velo':'velo','Live/Game':'live'})[c.type]||'rest'})`:'var(--line)';
+    w.forEach((c,i)=>{const d=addDays(ws,i);const col=c.type?`var(--t-${TVAR[c.type]||'rest'})`:'var(--line)';
       const mark=calendar().find(x=>x.date===d);
       h+=`<div class="bcell" style="border-top-color:${col}"><span class="mono" style="font-size:11px;color:var(--muted)">${md(d)}${mark?` · <b style="color:var(--red)">${esc(mark.label)}</b>`:''}</span>
         <select data-k="${k}" data-i="${i}" data-f="type" aria-label="Type ${md(d)}"><option value="">—</option>${T.map(t=>`<option ${c.type===t.name?'selected':''}>${esc(t.name)}</option>`).join('')}</select>
-        <div class="mini"><input type="number" min="0" placeholder="thr" value="${c.throws??''}" data-k="${k}" data-i="${i}" data-f="throws" aria-label="Throws"><input type="number" min="0" max="100" placeholder="%" value="${c.intensity??''}" data-k="${k}" data-i="${i}" data-f="intensity" aria-label="Effort percent"></div>
+        <div class="mini"><input type="number" min="0" placeholder="thr" value="${(c.rtt?c.rtt.throws:c.throws)??''}" data-k="${k}" data-i="${i}" data-f="throws" aria-label="Throws"><input type="number" min="0" max="100" placeholder="%" value="${c.intensity??''}" data-k="${k}" data-i="${i}" data-f="intensity" aria-label="Effort percent"></div>
         <input type="text" placeholder="note" value="${esc(c.notes||'')}" data-k="${k}" data-i="${i}" data-f="notes" style="padding:3px 5px;font-size:12px" aria-label="Note"></div>`});
-    const load=w.reduce((s,c)=>s+pts(c.type),0);const thr=w.reduce((s,c)=>s+(+c.throws||0),0);
-    let ratio='';if(first){const hist=[];for(let j=3;j>=1;j--){const pw=addDays(ws,-7*j);const kk=k-j;hist.push(kk>=0?BUILD.grid[kk].reduce((s,c)=>s+pts(c.type),0):weekLoad(first,pw))}
+    const mv=first?maxVelo(first):null;const load=Math.round(w.reduce((s,c)=>s+cellLoad(c,mv),0)*10)/10;const thr=w.reduce((s,c)=>s+(+c.throws||0),0);
+    let ratio='';if(first){const hist=[];for(let j=3;j>=1;j--){const pw=addDays(ws,-7*j);const kk=k-j;hist.push(kk>=0?BUILD.grid[kk].reduce((s,c)=>s+cellLoad(c,mv),0):weekLoad(first,pw))}
       const f=firstWeek(first);const arr=[...hist,load];const chronic=arr.reduce((a,b)=>a+b,0)/arr.length;const r=chronic?Math.round(load/chronic*100)/100:null;if(r!=null&&load)ratio=`<span class="pill ${ratioCls(r)}">${r.toFixed(2)}</span>`}
     h+=`<div class="tot" style="display:flex;flex-direction:column;gap:4px;padding:6px 2px;font-size:12px"><span class="num"><b>${load}</b> pts</span>${thr?`<span class="num sub">${thr} thr</span>`:''}${ratio}</div>`});
   $('#bgrid').innerHTML=h;
-  document.querySelectorAll('#bgrid [data-f]').forEach(el=>{const ev=el.tagName==='SELECT'?'change':'input';el.addEventListener(ev,()=>{const c=BUILD.grid[+el.dataset.k][+el.dataset.i];const f=el.dataset.f;c[f]=f==='type'||f==='notes'?el.value:num(el.value);if(f==='type')drawBuilderGrid()})});
+  document.querySelectorAll('#bgrid [data-f]').forEach(el=>{const ev=el.tagName==='SELECT'?'change':'input';el.addEventListener(ev,()=>{const c=BUILD.grid[+el.dataset.k][+el.dataset.i];const f=el.dataset.f;if(f==='throws'&&c.rtt){c.rtt.throws=num(el.value)||0}else c[f]=f==='type'||f==='notes'?el.value:num(el.value);if(f==='type'&&el.value!==RTT)delete c.rtt;drawBuilderGrid()})});
 }
 async function saveBuild(){
   const ids=[...BUILD.athletes];if(!ids.length){toast('Pick at least one pitcher');return}
   const title=BUILD.title.trim()||`Program from ${md(BUILD.start)}`;
-  const days={};BUILD.grid.forEach((w,k)=>w.forEach((c,i)=>{if(!c.type&&!c.notes)return;const o={type:c.type||null};if(c.throws!=null)o.throws=c.throws;if(c.intensity!=null)o.intensity=c.intensity;if(c.notes)o.notes=c.notes;days[addDays(BUILD.start,7*k+i)]=o}));
+  const days={};BUILD.grid.forEach((w,k)=>w.forEach((c,i)=>{if(!c.type&&!c.notes)return;const o={type:c.type||null};if(c.throws!=null)o.throws=c.throws;if(c.intensity!=null)o.intensity=c.intensity;if(c.notes)o.notes=c.notes;if(c.rtt)o.rtt=c.rtt;days[addDays(BUILD.start,7*k+i)]=o}));
   if(!Object.keys(days).length){toast('Fill in at least one day');return}
   const end=addDays(BUILD.start,7*BUILD.weeks-1);
   try{
@@ -766,7 +868,7 @@ function setupView(){
   $('#app').innerHTML=`<div class="stack"><h1>Setup</h1>
     <div class="grid2">
     <div class="panel stack"><h2>Workload points</h2><p class="sub" style="margin:0">Points per day type, carried over from the sheets. Weekly load and the ratio use these.</p>
-      <div class="stack" id="wtRows">${T.map((t,i)=>`<div class="row"><span class="chip ${tcls(t.name)}" style="width:110px">${esc(t.name)}</span><input type="number" value="${t.load}" data-i="${i}" style="width:80px"><input type="text" value="${esc(t.rpe||'')}" data-r="${i}" placeholder="Effort" style="flex:1"></div>`).join('')}</div>
+      <div class="stack" id="wtRows">${T.map((t,i)=>`<div class="row"><span class="chip ${tcls(t.name)}" style="width:110px">${esc(t.name)}</span>${t.load==='auto'?'<span class="mono" style="width:80px;color:var(--muted)">per throw</span><input type="hidden" value="auto" data-i="'+i+'">':`<input type="number" value="${t.load}" data-i="${i}" style="width:80px">`}<input type="text" value="${esc(t.rpe||'')}" data-r="${i}" placeholder="Effort" style="flex:1"></div>`).join('')}</div>
       <div><button class="btn" id="wtSave">Save points</button></div></div>
     <div class="panel stack"><h2>Season dates</h2><div class="stack" id="calRows">${calendar().map((c,i)=>`<div class="row"><input type="date" value="${c.date}" data-cd="${i}"><input type="text" value="${esc(c.label)}" data-cl="${i}" style="flex:1"></div>`).join('')}</div>
       <div class="row"><button class="btn" id="calSave">Save dates</button></div></div>
@@ -776,7 +878,7 @@ function setupView(){
       <div class="row"><input type="file" id="seedFile" accept=".json,application/json"><button class="btn primary" id="seedGo">Import</button></div><div id="seedMsg" class="sub"></div></div>
     <div class="panel stack"><h2>Arm care library</h2>${Object.entries(S.settings.armCare||{}).map(([k,rows])=>`<details><summary><b>${esc(k)}</b></summary><div class="tbl-wrap" style="margin-top:8px;max-height:420px"><table><tbody>${rows.map(r=>`<tr>${r.map(c=>`<td>${esc(c)}</td>`).join('')}</tr>`).join('')}</tbody></table></div></details>`).join('')||'<p class="sub">Import the Drive data to load the forearm and shoulder care tabs.</p>'}</div>
   </div>`;
-  $('#wtSave').onclick=async()=>{const v=T.map((t,i)=>({...t,load:+document.querySelector(`[data-i="${i}"]`).value||0,rpe:document.querySelector(`[data-r="${i}"]`).value}));await API.saveSetting('workloadTypes',v);toast('Points saved')};
+  $('#wtSave').onclick=async()=>{const v=T.map((t,i)=>({...t,load:t.load==='auto'?'auto':(+document.querySelector(`[data-i="${i}"]`).value||0),rpe:document.querySelector(`[data-r="${i}"]`).value}));await API.saveSetting('workloadTypes',v);toast('Points saved')};
   $('#calSave').onclick=async()=>{const v=calendar().map((c,i)=>({date:document.querySelector(`[data-cd="${i}"]`).value,label:document.querySelector(`[data-cl="${i}"]`).value}));await API.saveSetting('calendar',v);toast('Dates saved')};
   $('#seedGo').onclick=async()=>{const f=$('#seedFile').files[0];if(!f){toast('Choose shu-seed.json first');return}
     try{const seed=JSON.parse(await f.text());$('#seedMsg').textContent='Importing…';await importSeed(seed,m=>$('#seedMsg').textContent=m);}catch(e){$('#seedMsg').textContent='Import stopped: '+e.message}};
@@ -810,17 +912,18 @@ function athleteToday(aid){
     <div class="today-hero">
       <div class="panel stack">
         <div class="eyebrow">Today's throwing</div>
-        ${p&&p.type?`<div class="big-type" style="color:var(--t-${({'Rest':'rest','Recovery':'recovery','Hybrid B':'hybb','Hybrid A':'hyba','Bullpen':'pen','Velo':'velo','Live/Game':'live'})[p.type]||'rest'})">${esc(p.type)}</div>`:'<div class="big-type sub">No plan today</div>'}
-        <div class="kv">${t?`<div><b>${esc(t.rpe||'—')}</b><span>effort</span></div>`:''}${p&&p.intensity?`<div><b>${p.intensity}%</b><span>target effort</span></div>`:''}${p&&p.throws?`<div><b>${p.throws}</b><span>throws</span></div>`:''}${a.targets&&a.targets.ip?`<div><b>${a.targets.ip} IP</b><span>game target${a.targets.pitches?' · '+a.targets.pitches+'p':''}</span></div>`:''}</div>
+        ${p&&p.type?`<div class="big-type" style="color:var(--t-${TVAR[p.type]||'rest'})">${esc(p.type)}</div>`:'<div class="big-type sub">No plan today</div>'}
+        <div class="kv">${t?`<div><b>${esc(t.rpe||'—')}</b><span>effort</span></div>`:''}${p&&p.intensity?`<div><b>${p.intensity}%</b><span>target effort</span></div>`:''}${p&&p.throws?`<div><b>${p.throws}</b><span>throws</span></div>`:''}${p&&p.rtt&&p.rtt.throws?`<div><b>${p.rtt.throws}</b><span>throws</span></div>`:''}${p&&p.rtt&&p.rtt.velo?`<div><b>${p.rtt.velo}</b><span>mph target${p.rtt.intentThrows&&p.rtt.intentThrows<p.rtt.throws?' · '+p.rtt.intentThrows+' throws':''}</span></div>`:''}${a.targets&&a.targets.ip?`<div><b>${a.targets.ip} IP</b><span>game target${a.targets.pitches?' · '+a.targets.pitches+'p':''}</span></div>`:''}</div>
         ${p&&p.notes?`<p style="margin:0"><b>Coach:</b> ${esc(p.notes)}</p>`:''}
         ${card?cardHtml(p.type,card,false):''}
+        ${p&&p.rtt?rttDetailHtml(p,aid):''}
         ${(prof.warmup||[]).length?`<details><summary><b>Warm up / everydays</b></summary><div class="excard" style="margin-top:8px"><div class="exs">${prof.warmup.map(e=>`<div class="ex"><span class="nm">${esc(e.name)}</span><span class="dose">${esc([e.sets!=null?e.sets+'×':'',e.reps??''].join(''))}</span></div>`).join('')}</div></div>${prof.warmupNote?`<p class="sub" style="font-size:13px">${esc(prof.warmupNote)}</p>`:''}</details>`:''}
       </div>
       <div class="panel stack"><div class="spread"><h2>${logged?'Today’s log':'Log today'}</h2>${logged?'<span class="pill good">Logged</span>':''}</div>${logForm(aid,TODAY,'tl')}<button class="btn primary" id="tSave">${logged?'Update log':'Save log'}</button></div>
     </div>
     <div class="panel"><h2>This week</h2><div style="overflow-x:auto"><div class="cal" style="grid-template-columns:repeat(7,minmax(92px,1fr));min-width:680px">${strip}</div></div></div>
     ${(prof.goals||[]).length?`<div class="panel"><h2>Your goals</h2><ul style="margin:0;padding-left:18px">${prof.goals.map(g=>`<li>${esc(g.replace(/^\d+\.\s*/,''))}</li>`).join('')}</ul></div>`:''}
-    ${(prof.rtt||[]).length?rttTab(a):''}
+    
   </div>`;
   bindLogForm('tl');
   $('#tSave').onclick=async()=>{try{await API.saveLog(readLogForm('tl',aid,TODAY));toast('Logged. Coach can see it now.');athleteToday(aid)}catch(e){toast(e.message)}};
@@ -836,7 +939,7 @@ function athleteHistory(aid){
 async function boot(){
   try{const t=lsGet('shuhub_theme');if(t)document.documentElement.dataset.theme=t}catch(e){}
   $('#brand').onclick=e=>{e.preventDefault();go(S.me.role==='athlete'||S.viewAs?'today':'staff')};
-  if(window.__FORCE_DEMO__){const seed=await getSeed();Demo.start(seed);render();return}
+  if(window.__FORCE_DEMO__){const seed=await getSeed();Demo.start(seed);render();loadHubVelo();return}
   if(!window.supabase){S.mode=null;render();return}
   sb=window.supabase.createClient(CLOUD.url,CLOUD.key,{auth:{persistSession:true,detectSessionInUrl:true,flowType:'implicit'}});
   const {data}=await sb.auth.getSession();
@@ -844,6 +947,7 @@ async function boot(){
     try{await cloudLoad()}catch(e){
       $('#app').innerHTML=`<div class="login stack"><h1>One setup step left</h1><div class="panel stack"><p style="margin:0">Signed in as <b>${esc(data.session.user.email)}</b>, but the hub's tables aren't in the database yet.</p><p class="sub" style="margin:0">Open Supabase → SQL Editor, paste <span class="mono">supabase/setup.sql</span> from this site's repo, put your email in the last line, and run it. Then reload.</p><p class="sub mono" style="margin:0;font-size:12px">${esc(e.message||e)}</p><button class="btn" onclick="signOut()">Sign out</button></div></div>`;return}
   }
+  loadHubVelo();
   sb.auth.onAuthStateChange((ev)=>{if(ev==='SIGNED_IN'&&S.mode!=='cloud')location.reload()});
   render();
 }
