@@ -1,0 +1,851 @@
+<title>SHUpitcherhub</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap">
+<style>
+/* Layout: clubhouse whiteboard — a fixed top bar, then one working column of panels; tables scroll inside their own frames. */
+:root{
+  --bg:#f5f4f3; --panel:#ffffff; --ink:#1d1a1b; --muted:#6b6466; --line:#e4dfdf; --soft:#efebea;
+  --red:#c8102e; --red-ink:#ffffff; --red-soft:#fbe9ec;
+  --good:#1f7a4d; --good-soft:#e3f3ea; --warn:#a96400; --warn-soft:#fdf0d9; --bad:#b4142f; --bad-soft:#fbe4e8;
+  --t-rest:#9a9294; --t-recovery:#2f8f6b; --t-hybb:#3b6fb6; --t-hyba:#5b4bb0; --t-pen:#c07a12; --t-velo:#d2541c; --t-live:#c8102e;
+  --f-display:"Barlow Condensed","Arial Narrow",Arial,sans-serif;
+  --f-body:"Inter",system-ui,-apple-system,"Segoe UI",sans-serif;
+  --f-mono:"JetBrains Mono",ui-monospace,Menlo,Consolas,monospace;
+  --r:10px;
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --bg:#141213; --panel:#1d1a1b; --ink:#f1ecec; --muted:#a59c9e; --line:#332e2f; --soft:#262223;
+  --red:#e2344f; --red-ink:#ffffff; --red-soft:#3a1a20;
+  --good:#4cc08a; --good-soft:#163024; --warn:#e6a23a; --warn-soft:#352612; --bad:#ff6b80; --bad-soft:#3a1820;
+  --t-rest:#7c7476; --t-recovery:#46b88e; --t-hybb:#6a9be0; --t-hyba:#8f80e6; --t-pen:#e0a03c; --t-velo:#ef7a45; --t-live:#ff5069;
+  color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#141213; --panel:#1d1a1b; --ink:#f1ecec; --muted:#a59c9e; --line:#332e2f; --soft:#262223;
+  --red:#e2344f; --red-ink:#ffffff; --red-soft:#3a1a20;
+  --good:#4cc08a; --good-soft:#163024; --warn:#e6a23a; --warn-soft:#352612; --bad:#ff6b80; --bad-soft:#3a1820;
+  --t-rest:#7c7476; --t-recovery:#46b88e; --t-hybb:#6a9be0; --t-hyba:#8f80e6; --t-pen:#e0a03c; --t-velo:#ef7a45; --t-live:#ff5069;
+  color-scheme:dark}
+*{box-sizing:border-box}
+html,body{margin:0}
+body{background:var(--bg);color:var(--ink);font:14px/1.5 var(--f-body);-webkit-font-smoothing:antialiased}
+body::before{content:"";position:fixed;inset:0 0 auto;height:env(safe-area-inset-top,0px);z-index:30;background:var(--ink)}
+a{color:inherit}
+button,input,select,textarea{font:inherit;color:inherit}
+:focus-visible{outline:2px solid var(--red);outline-offset:2px}
+.wrap{max-width:1240px;margin:0 auto;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
+
+/* top bar */
+.top{position:sticky;top:env(safe-area-inset-top,0px);z-index:20;background:var(--ink);color:var(--bg)}
+.top .wrap{display:flex;align-items:center;gap:20px;min-height:56px;flex-wrap:wrap;padding-block:6px}
+.brand{font:700 24px/1 var(--f-display);letter-spacing:.01em;text-transform:none;display:flex;align-items:baseline;gap:2px;text-decoration:none}
+.brand b{color:var(--red);font-weight:700}
+.brand span{font-weight:600;opacity:.9}
+.nav{display:flex;gap:4px;flex-wrap:wrap;flex:1}
+.nav a{font:600 15px/1 var(--f-display);letter-spacing:.06em;text-transform:uppercase;text-decoration:none;padding:9px 12px;border-radius:6px;opacity:.75}
+.nav a:hover{opacity:1;background:rgba(127,127,127,.18)}
+.nav a.on{opacity:1;background:var(--red);color:var(--red-ink)}
+.who{display:flex;align-items:center;gap:10px;font-size:12px;opacity:.85}
+.who button{background:transparent;border:1px solid currentColor;border-radius:6px;padding:4px 10px;cursor:pointer;color:inherit;opacity:.8}
+.demo-band{background:var(--warn-soft);color:var(--warn);font-size:12.5px}
+.demo-band .wrap{padding-block:6px;display:flex;gap:12px;flex-wrap:wrap;align-items:center}
+.demo-band button{border:1px solid currentColor;background:transparent;border-radius:6px;padding:2px 10px;cursor:pointer;color:inherit}
+
+main{padding-block:22px 60px}
+h1,h2,h3{font-family:var(--f-display);font-weight:700;letter-spacing:.01em;text-wrap:balance;margin:0}
+h1{font-size:34px;line-height:1.05}
+h2{font-size:22px;line-height:1.1;text-transform:uppercase;letter-spacing:.04em}
+h3{font-size:17px;text-transform:uppercase;letter-spacing:.05em}
+.sub{color:var(--muted)}
+.eyebrow{font:600 12px/1 var(--f-display);letter-spacing:.14em;text-transform:uppercase;color:var(--muted)}
+.mono,.num{font-family:var(--f-mono);font-variant-numeric:tabular-nums}
+.stack{display:flex;flex-direction:column;gap:18px}
+.row{display:flex;gap:12px;flex-wrap:wrap;align-items:center}
+.spread{display:flex;justify-content:space-between;align-items:flex-end;gap:12px;flex-wrap:wrap}
+.panel{background:var(--panel);border:1px solid var(--line);border-radius:var(--r);padding:18px;min-width:0}
+.panel>h2,.panel>.spread{margin-bottom:12px}
+.grid2{display:grid;grid-template-columns:repeat(auto-fit,minmax(320px,1fr));gap:18px}
+.grid3{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:18px}
+
+/* buttons & fields */
+.btn{display:inline-flex;align-items:center;gap:6px;border:1px solid var(--line);background:var(--panel);border-radius:8px;padding:8px 14px;cursor:pointer;font-weight:500;text-decoration:none}
+.btn:hover{border-color:var(--muted)}
+.btn.primary{background:var(--red);border-color:var(--red);color:var(--red-ink)}
+.btn.primary:hover{filter:brightness(1.07)}
+.btn.small{padding:4px 10px;font-size:12.5px}
+.btn.ghost{background:transparent;border-color:transparent}
+.btn.danger{color:var(--bad)}
+.btn[disabled]{opacity:.5;cursor:not-allowed}
+label.f{display:flex;flex-direction:column;gap:4px;font-size:12px;color:var(--muted);font-weight:500}
+input[type=text],input[type=email],input[type=number],input[type=date],select,textarea{background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:8px 10px;color:var(--ink);min-width:0}
+textarea{resize:vertical;min-height:70px}
+input[type=range]{accent-color:var(--red);width:100%}
+
+/* day-type chips */
+.chip{display:inline-flex;align-items:center;gap:6px;font:600 12px/1 var(--f-display);letter-spacing:.06em;text-transform:uppercase;padding:5px 8px;border-radius:5px;color:#fff;white-space:nowrap;background:var(--t-rest)}
+.chip.t-recovery{background:var(--t-recovery)}.chip.t-hybrid-b{background:var(--t-hybb)}.chip.t-hybrid-a{background:var(--t-hyba)}
+.chip.t-bullpen{background:var(--t-pen)}.chip.t-velo{background:var(--t-velo)}.chip.t-live-game{background:var(--t-live)}
+.chip.none{background:transparent;color:var(--muted);border:1px dashed var(--line)}
+.pill{display:inline-flex;align-items:center;gap:5px;font-size:12px;font-weight:600;padding:2px 9px;border-radius:999px;background:var(--soft);color:var(--muted);white-space:nowrap}
+.pill.good{background:var(--good-soft);color:var(--good)}.pill.warn{background:var(--warn-soft);color:var(--warn)}.pill.bad{background:var(--bad-soft);color:var(--bad)}
+.pill.role{background:var(--ink);color:var(--bg)}
+
+/* tables */
+.tbl-wrap{overflow-x:auto;border:1px solid var(--line);border-radius:8px}
+table{border-collapse:collapse;width:100%;font-size:13px}
+th{font:600 12px/1.2 var(--f-display);letter-spacing:.08em;text-transform:uppercase;color:var(--muted);text-align:left;padding:9px 10px;background:var(--soft);white-space:nowrap}
+td{padding:9px 10px;border-top:1px solid var(--line);vertical-align:middle}
+tr.click{cursor:pointer}tr.click:hover td{background:var(--soft)}
+td.r,th.r{text-align:right}
+
+/* season strip */
+.season{position:relative;height:64px;margin:6px 0 2px}
+.season .bar{position:absolute;left:0;right:0;top:26px;height:10px;border-radius:5px;background:var(--soft);overflow:hidden}
+.season .seg{position:absolute;top:0;bottom:0}
+.season .mk{position:absolute;top:0;transform:translateX(-50%);display:flex;flex-direction:column;align-items:center;font-size:11px;color:var(--muted);white-space:nowrap}
+.season .mk i{display:block;width:2px;height:44px;background:var(--line);margin-top:2px}
+.season .mk.today{color:var(--red);font-weight:700}.season .mk.today i{background:var(--red)}
+.countdown{display:flex;gap:28px;flex-wrap:wrap}
+.countdown div{display:flex;flex-direction:column}
+.countdown b{font:700 34px/1 var(--f-display)}
+.countdown span{font-size:12px;color:var(--muted)}
+
+/* flags */
+.flags{display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:10px}
+.flag{display:flex;gap:10px;align-items:flex-start;padding:10px 12px;border-radius:8px;background:var(--soft);cursor:pointer;border-left:4px solid var(--muted)}
+.flag.bad{border-left-color:var(--bad)}.flag.warn{border-left-color:var(--warn)}
+.flag b{display:block}.flag small{color:var(--muted)}
+
+/* dots, sparks */
+.dots{display:flex;gap:3px}
+.dots i{width:9px;height:9px;border-radius:2px;background:var(--soft);display:block}
+.dots i.ok{background:var(--good)}.dots i.mid{background:var(--warn)}.dots i.hi{background:var(--bad)}
+.ci{display:inline-flex;align-items:center;justify-content:center;min-width:26px;height:22px;border-radius:5px;font:600 12px var(--f-mono);padding:0 6px}
+.ci.ok{background:var(--good-soft);color:var(--good)}.ci.mid{background:var(--warn-soft);color:var(--warn)}.ci.hi{background:var(--bad-soft);color:var(--bad)}.ci.na{background:var(--soft);color:var(--muted)}
+
+/* calendar */
+.cal{display:grid;grid-template-columns:76px repeat(7,minmax(92px,1fr)) 86px;gap:4px;min-width:820px}
+.cal .h{font:600 12px var(--f-display);letter-spacing:.1em;text-transform:uppercase;color:var(--muted);padding:4px 6px}
+.cal .wk{font:500 12px var(--f-mono);color:var(--muted);padding:8px 4px}
+.cal .d{background:var(--soft);border-radius:7px;padding:6px;min-height:74px;display:flex;flex-direction:column;gap:5px;cursor:pointer;border:1px solid transparent;position:relative}
+.cal .d:hover{border-color:var(--muted)}
+.cal .d.today{border-color:var(--red);box-shadow:inset 0 0 0 1px var(--red)}
+.cal .d .dn{font:500 11px var(--f-mono);color:var(--muted)}
+.cal .d .meta{font-size:11px;color:var(--muted);line-height:1.3}
+.cal .d .ci{position:absolute;top:5px;right:5px;height:18px;min-width:20px;font-size:11px}
+.cal .tot{padding:8px 4px;font-size:12px;display:flex;flex-direction:column;gap:4px}
+
+/* builder grid */
+.bgrid{display:grid;grid-template-columns:70px repeat(7,minmax(108px,1fr)) 92px;gap:4px;min-width:960px}
+.bcell{background:var(--soft);border-radius:7px;padding:6px;display:flex;flex-direction:column;gap:4px;border-top:4px solid var(--t-rest)}
+.bcell select{padding:4px 6px;font-size:12.5px;font-weight:600}
+.bcell .mini{display:flex;gap:4px}
+.bcell .mini input{width:100%;padding:3px 5px;font-size:12px;font-family:var(--f-mono)}
+.bcell.out{opacity:.55}
+.athlete-pick{display:flex;flex-wrap:wrap;gap:6px}
+.athlete-pick label{display:inline-flex;align-items:center;gap:6px;border:1px solid var(--line);border-radius:999px;padding:4px 11px;font-size:12.5px;cursor:pointer;background:var(--panel)}
+.athlete-pick input{accent-color:var(--red)}
+.athlete-pick label.on{border-color:var(--red);background:var(--red-soft)}
+
+/* cards */
+.excard{border:1px solid var(--line);border-radius:8px;overflow:hidden}
+.excard header{display:flex;justify-content:space-between;align-items:center;gap:8px;padding:10px 12px;background:var(--soft)}
+.excard .exs{padding:4px 12px 10px}
+.ex{display:grid;grid-template-columns:1fr auto;gap:2px 10px;padding:7px 0;border-bottom:1px dashed var(--line)}
+.ex:last-child{border-bottom:0}
+.ex .nm{font-weight:600}
+.ex .dose{font:12px var(--f-mono);color:var(--muted);text-align:right}
+.ex .nt{grid-column:1/-1;font-size:12px;color:var(--muted)}
+.edit-ex{display:grid;grid-template-columns:2fr .6fr .8fr 1.2fr 2fr auto;gap:4px;margin:4px 0}
+.edit-ex input{padding:5px 6px;font-size:12.5px}
+
+/* today (athlete) */
+.today-hero{display:grid;grid-template-columns:minmax(0,1.2fr) minmax(0,1fr);gap:18px}
+@media (max-width:820px){.today-hero{grid-template-columns:1fr}}
+.big-type{font:700 46px/1 var(--f-display);text-transform:uppercase;letter-spacing:.02em}
+.kv{display:flex;gap:22px;flex-wrap:wrap}
+.kv div{display:flex;flex-direction:column}.kv b{font:600 22px/1.1 var(--f-mono)}.kv span{font-size:12px;color:var(--muted)}
+.scale{display:grid;grid-template-columns:repeat(11,1fr);gap:4px}
+.scale button{border:1px solid var(--line);background:var(--panel);border-radius:6px;padding:8px 0;font:600 14px var(--f-mono);cursor:pointer}
+.scale button.on{background:var(--ink);color:var(--bg);border-color:var(--ink)}
+.typepick{display:flex;flex-wrap:wrap;gap:6px}
+.typepick button{border:0;cursor:pointer;opacity:.45}
+.typepick button.on{opacity:1;outline:2px solid var(--ink);outline-offset:1px}
+
+/* drawer / toast */
+.scrim{position:fixed;inset:0;background:rgba(0,0,0,.35);z-index:40}
+.drawer{position:fixed;top:0;right:0;bottom:0;width:min(440px,100%);background:var(--panel);z-index:41;padding:20px;padding-top:calc(20px + env(safe-area-inset-top,0px));padding-bottom:calc(20px + env(safe-area-inset-bottom,0px));padding-right:max(20px,env(safe-area-inset-right,0px));overflow-y:auto;display:flex;flex-direction:column;gap:14px;border-left:1px solid var(--line)}
+.toast{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(20px + env(safe-area-inset-bottom,0px));background:var(--ink);color:var(--bg);padding:10px 16px;border-radius:8px;z-index:50;font-size:13px;max-width:calc(100% - 32px)}
+.empty{padding:26px;text-align:center;color:var(--muted);border:1px dashed var(--line);border-radius:8px}
+.tabs{display:flex;gap:2px;border-bottom:1px solid var(--line);overflow-x:auto}
+.tabs button{border:0;background:transparent;padding:10px 12px;font:600 14px var(--f-display);letter-spacing:.08em;text-transform:uppercase;color:var(--muted);cursor:pointer;border-bottom:3px solid transparent;white-space:nowrap}
+.tabs button.on{color:var(--ink);border-bottom-color:var(--red)}
+.login{max-width:420px;margin:8vh auto 0}
+.login h1{font-size:48px}
+.sheet td{font-size:12px;white-space:pre-wrap;min-width:60px;max-width:280px;border-left:1px solid var(--line)}
+.sheet th{position:sticky;top:0}
+.prose{max-width:68ch}
+.rtt{min-width:760px;display:grid;grid-template-columns:repeat(7,minmax(100px,1fr));gap:4px}
+.rtt div{background:var(--soft);border-radius:6px;padding:6px;font-size:12px;min-height:60px}
+.rtt div b{display:block;font:600 11px var(--f-display);letter-spacing:.08em;text-transform:uppercase;color:var(--muted)}
+.legend{display:flex;gap:6px;flex-wrap:wrap}
+svg text{fill:var(--muted);font:11px var(--f-mono)}
+@media (prefers-reduced-motion:no-preference){.panel{animation:rise .25s ease-out both}@keyframes rise{from{transform:translateY(4px)}to{transform:none}}}
+@media (max-width:560px){h1{font-size:28px}.big-type{font-size:36px}.edit-ex{grid-template-columns:1fr 1fr}.who .em{display:none}}
+</style>
+
+<header class="top"><div class="wrap">
+  <a class="brand" href="#" id="brand"><b>SHU</b><span>pitcherhub</span></a>
+  <nav class="nav" id="nav"></nav>
+  <div class="who" id="who"></div>
+</div></header>
+<div class="demo-band" id="demoBand" hidden><div class="wrap"><span id="demoText"></span><span class="row" id="demoBtns"></span></div></div>
+<main class="wrap" id="app"><div class="empty">Loading…</div></main>
+<div id="layer"></div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
+<script>
+/* ============================================================ config */
+const CLOUD = {
+  url: 'https://zkiipbxfrlvbneoisroe.supabase.co',
+  key: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InpraWlwYnhmcmx2Ym5lb2lzcm9lIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODcxODAwNDcsImV4cCI6MjEwMjc1NjA0N30.ynv18I7EVfICkxnEflN9A-hna-v8R2j9FUMIMU6eEfc'
+};
+const DEFAULT_TYPES = [
+  {name:'Rest',load:0,rpe:'—'},{name:'Recovery',load:5,rpe:'Light'},{name:'Hybrid B',load:8,rpe:'60–70%'},
+  {name:'Hybrid A',load:12,rpe:'80–90%'},{name:'Bullpen',load:15,rpe:'Mound'},{name:'Velo',load:18,rpe:'High intent'},{name:'Live/Game',load:25,rpe:'Compete'}];
+const DEFAULT_CAL = [{date:'2026-12-04',label:'Ramp-ups complete'},{date:'2027-01-19',label:'Lives begin'},{date:'2027-02-16',label:'Lives end'},{date:'2027-02-19',label:'Opening Day'}];
+const DAYS=['Mon','Tue','Wed','Thu','Fri','Sat','Sun'];
+const DEMO_KEY='shuhub_demo_v1';
+
+/* ============================================================ helpers */
+const $=s=>document.querySelector(s);
+const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const iso=d=>{const x=new Date(d);return `${x.getFullYear()}-${String(x.getMonth()+1).padStart(2,'0')}-${String(x.getDate()).padStart(2,'0')}`};
+const parse=s=>{const [y,m,d]=s.split('-').map(Number);return new Date(y,m-1,d)};
+const addDays=(s,n)=>{const d=parse(s);d.setDate(d.getDate()+n);return iso(d)};
+const monday=s=>{const d=parse(s);const k=(d.getDay()+6)%7;d.setDate(d.getDate()-k);return iso(d)};
+const daysBetween=(a,b)=>Math.round((parse(b)-parse(a))/864e5);
+const TODAY=iso(new Date());
+const md=s=>{const d=parse(s);return `${d.getMonth()+1}/${d.getDate()}`};
+const dayName=s=>DAYS[(parse(s).getDay()+6)%7];
+const tcls=t=>t?'t-'+String(t).toLowerCase().replace(/[^a-z]+/g,'-'):'none';
+const chip=(t,extra='')=>t?`<span class="chip ${tcls(t)}">${esc(t)}${extra}</span>`:`<span class="chip none">—</span>`;
+const ciCls=v=>v==null||v===''?'na':v>=6?'hi':v>=4?'mid':'ok';
+const ciBadge=v=>`<span class="ci ${ciCls(v)}">${v==null||v===''?'–':esc(v)}</span>`;
+const uid=()=>(crypto.randomUUID?crypto.randomUUID():'id-'+Math.random().toString(36).slice(2)+Date.now().toString(36));
+const num=v=>v===''||v==null||isNaN(+v)?null:+v;
+function toast(msg){const t=document.createElement('div');t.className='toast';t.textContent=msg;document.body.appendChild(t);setTimeout(()=>t.remove(),3200)}
+function lsGet(k){try{return localStorage.getItem(k)}catch(e){return null}}
+function lsSet(k,v){try{localStorage.setItem(k,v)}catch(e){}}
+function lsDel(k){try{localStorage.removeItem(k)}catch(e){}}
+
+/* ============================================================ state + backends */
+const S={mode:null,me:{email:'',role:null,athleteId:null},athletes:[],programs:[],logs:[],templates:[],settings:{},logIdx:{},viewAs:null};
+let sb=null;
+
+function indexLogs(){S.logIdx={};for(const l of S.logs)S.logIdx[l.athlete_id+'|'+l.date]=l}
+function types(){return (S.settings.workloadTypes&&S.settings.workloadTypes.length)?S.settings.workloadTypes:DEFAULT_TYPES}
+function calendar(){return S.settings.calendar||DEFAULT_CAL}
+function athlete(id){return S.athletes.find(a=>a.id===id)}
+
+/* Seed → rows (used both for demo and for the cloud import) */
+function seedToRows(seed){
+  const athletes=[],programs=[],logs=[];
+  for(const p of seed.players){
+    athletes.push({id:p.id,name:p.name,nickname:p.nickname||'',role:p.role||'',targets:p.targets||{},role_note:p.roleNote||'',email:'',
+      profile:{goals:p.goals,warmup:p.warmup,warmupNote:p.warmupNote,cards:p.cards,rtt:p.rtt,drive:p.drive,velo:p.velo,fallWorkload:p.workloadTable||null},
+      archive:p.archive});
+    const days={};let first=null,last=null;
+    for(const w of p.fallPlan||[]){ if(!w.start||w.start==='None')continue;
+      w.days.forEach((t,i)=>{if(!t)return;const d=addDays(w.start,i);days[d]={type:t};first=!first||d<first?d:first;last=!last||d>last?d:last}); }
+    if(first)programs.push({id:uid(),athlete_id:p.id,title:'Fall 2026 (from Google Sheet)',start_date:first,end_date:last,days,source:'drive',created_at:'2026-09-01T00:00:00Z'});
+    for(const e of p.log||[]){ if(!e.date)continue;
+      logs.push({id:uid(),athlete_id:p.id,date:e.date,type:null,checkin:typeof e.checkin==='number'?e.checkin:null,throws:null,intensity:null,
+        innings:typeof e.innings==='number'?e.innings:null,pitches:typeof e.pitches==='number'?e.pitches:null,bullpen:e.bullpen!=null?String(e.bullpen):null,
+        notes:[e.notes,(typeof e.checkin==='string'?'Check-in: '+e.checkin:null),(typeof e.innings==='string'?'Innings: '+e.innings:null),(typeof e.pitches==='string'?'Pitches: '+e.pitches:null)].filter(Boolean).join(' · ')||null,source:'drive'}); }
+  }
+  const settings={workloadTypes:seed.workloadTypes||DEFAULT_TYPES,library:seed.library||{},armCare:seed.armCare||{},calendar:seed.calendar||DEFAULT_CAL,masterTemplate:seed.masterTemplate||{}};
+  return {athletes,programs,logs,settings};
+}
+
+const Demo={
+  load(){const r=lsGet(DEMO_KEY);if(r){try{return JSON.parse(r)}catch(e){}}return null},
+  save(){lsSet(DEMO_KEY,JSON.stringify({athletes:S.athletes,programs:S.programs,logs:S.logs,templates:S.templates,settings:S.settings}))},
+  start(seed){
+    let d=this.load();
+    if(!d){const r=seedToRows(seed);d={...r,templates:[]}}
+    Object.assign(S,{mode:'demo',athletes:d.athletes,programs:d.programs,logs:d.logs,templates:d.templates||[],settings:d.settings||{}});
+    S.me={email:'coach (preview)',role:'coach',athleteId:null};indexLogs();
+  }
+};
+
+const API={
+  async upsert(table,rows,onConflict){
+    if(S.mode==='demo'){Demo.save();return}
+    const {error}=await sb.from(table).upsert(rows,onConflict?{onConflict}:undefined);if(error)throw error;
+  },
+  async del(table,match){
+    if(S.mode==='demo'){Demo.save();return}
+    let q=sb.from(table).delete();for(const k in match)q=q.eq(k,match[k]);const {error}=await q;if(error)throw error;
+  },
+  async saveAthlete(a){a.updated_at=new Date().toISOString();const i=S.athletes.findIndex(x=>x.id===a.id);if(i<0)S.athletes.push(a);else S.athletes[i]=a;await this.upsert('athletes',[a])},
+  async saveProgram(p){const i=S.programs.findIndex(x=>x.id===p.id);if(i<0)S.programs.push(p);else S.programs[i]=p;await this.upsert('programs',[p])},
+  async deleteProgram(id){S.programs=S.programs.filter(p=>p.id!==id);await this.del('programs',{id})},
+  async saveLog(l){l.updated_at=new Date().toISOString();const k=l.athlete_id+'|'+l.date;const ex=S.logIdx[k];if(ex){l.id=ex.id;Object.assign(ex,l)}else{l.id=l.id||uid();S.logs.push(l)}indexLogs();await this.upsert('logs',[S.logIdx[k]],'athlete_id,date')},
+  async saveTemplate(t){const i=S.templates.findIndex(x=>x.id===t.id);if(i<0)S.templates.push(t);else S.templates[i]=t;await this.upsert('templates',[t])},
+  async deleteTemplate(id){S.templates=S.templates.filter(t=>t.id!==id);await this.del('templates',{id})},
+  async saveSetting(key,value){S.settings[key]=value;await this.upsert('settings',[{key,value}])},
+};
+
+async function cloudLoad(){
+  const who=(await sb.auth.getUser()).data.user;
+  S.me.email=who?.email||'';
+  const q=async(t,order)=>{let r=sb.from(t).select('*');if(order)r=r.order(order);const {data,error}=await r;if(error)throw error;return data};
+  const staff=await q('staff');
+  const isCoach=staff.some(s=>(s.email||'').toLowerCase()===S.me.email.toLowerCase());
+  const [ath,prog,logs,tpl,set]=await Promise.all([q('athletes','name'),q('programs','created_at'),q('logs','date'),q('templates','created_at'),q('settings')]);
+  Object.assign(S,{athletes:ath,programs:prog,logs,templates:tpl,settings:Object.fromEntries(set.map(r=>[r.key,r.value]))});
+  S.me.role=isCoach?'coach':(ath.find(a=>(a.email||'').toLowerCase()===S.me.email.toLowerCase())?'athlete':null);
+  S.me.athleteId=S.me.role==='athlete'?ath.find(a=>(a.email||'').toLowerCase()===S.me.email.toLowerCase()).id:null;
+  indexLogs();
+}
+
+/* ============================================================ workload math (same rules as the Google Sheet) */
+function pts(t){const x=types().find(y=>y.name===t);return x?+x.load:0}
+function planDay(aid,date){let best=null;for(const p of S.programs){if(p.athlete_id!==aid||!p.days||!p.days[date])continue;if(!best||String(p.created_at||'')>String(best.created_at||''))best=p}return best?{...best.days[date],program:best}:null}
+function logFor(aid,date){return S.logIdx[aid+'|'+date]||null}
+function doneType(aid,date){const l=logFor(aid,date);if(l&&l.type)return l.type;const p=planDay(aid,date);return p?p.type:null}
+function weekLoad(aid,ws,mode='actual'){let s=0;for(let i=0;i<7;i++){const d=addDays(ws,i);s+=pts(mode==='plan'?(planDay(aid,d)||{}).type:doneType(aid,d))}return s}
+function weekThrows(aid,ws){let s=0,any=false;for(let i=0;i<7;i++){const d=addDays(ws,i);const l=logFor(aid,d);const p=planDay(aid,d);const v=l&&l.throws!=null?l.throws:(p&&p.throws!=null?p.throws:null);if(v!=null){s+=+v;any=true}}return any?s:null}
+function firstWeek(aid){let f=null;for(const p of S.programs)if(p.athlete_id===aid&&(!f||p.start_date<f))f=p.start_date;for(const l of S.logs)if(l.athlete_id===aid&&(!f||l.date<f))f=l.date;return f?monday(f):null}
+/* Acute = this week's load. Chronic = average of up to 4 weeks ending this week (the sheet's formula). Flag outside 0.8–1.3. */
+function acwr(aid,ws){const acute=weekLoad(aid,ws);const f=firstWeek(aid);const ls=[];for(let k=3;k>=0;k--){const w=addDays(ws,-7*k);if(f&&w<f)continue;ls.push(weekLoad(aid,w))}const chronic=ls.length?ls.reduce((a,b)=>a+b,0)/ls.length:0;return {acute,chronic,ratio:chronic?Math.round(acute/chronic*100)/100:null}}
+const ratioCls=r=>r==null?'':(r<0.8||r>1.3)?'bad':'good';
+function lastCheckin(aid){let best=null;for(const l of S.logs)if(l.athlete_id===aid&&l.checkin!=null&&(!best||l.date>best.date))best=l;return best}
+function lastLog(aid){let best=null;for(const l of S.logs)if(l.athlete_id===aid&&(!best||l.date>best.date))best=l;return best}
+
+/* ============================================================ router + chrome */
+function route(){return (location.hash||'').replace(/^#/,'')}
+function go(h){if(location.hash==='#'+h)render();else location.hash=h}
+window.addEventListener('hashchange',()=>{closeLayer();render()});
+
+function chrome(){
+  const r=route();const nav=$('#nav');const who=$('#who');
+  if(!S.me.role){nav.innerHTML='';who.innerHTML='';return}
+  const viewingAthlete=S.me.role==='athlete'||S.viewAs;
+  const links=viewingAthlete?[['today','Today'],['history','My log']]:
+    [['staff','Staff'],['build','Build program'],['roster','Roster & invites'],['setup','Setup']];
+  nav.innerHTML=links.map(([h,t])=>`<a href="#${h}" class="${(r===h||(!r&&h===links[0][0])||(h==='staff'&&r.startsWith('p-')))?'on':''}">${t}</a>`).join('')+
+    (S.me.role==='coach'&&!S.viewAs?`<a href="${esc(window.__HUB_URL__||'hub.html')}"${window.__HUB_URL__?' target="_blank" rel="noopener"':''}>Pitch data ↗</a>`:'');
+  who.innerHTML=`<span class="em">${esc(S.me.email)}</span><button id="signout">${S.mode==='demo'?'Exit preview':'Sign out'}</button>`;
+  $('#signout').onclick=signOut;
+  const band=$('#demoBand');
+  if(S.mode==='demo'||S.viewAs){band.hidden=false;
+    $('#demoText').textContent=S.viewAs?`Viewing as ${athlete(S.viewAs)?.name}. This is what he sees after signing in.`:'Preview mode: your real Drive data, saved only in this browser. Nothing is sent to the team cloud and no emails go out.';
+    $('#demoBtns').innerHTML=(S.viewAs?`<button id="stopView">Back to coach view</button>`:'')+(S.mode==='demo'?`<button id="resetDemo">Reset preview</button>`:'');
+    const sv=$('#stopView');if(sv)sv.onclick=()=>{S.viewAs=null;go('staff')};
+    const rd=$('#resetDemo');if(rd)rd.onclick=()=>{lsDel(DEMO_KEY);location.reload()};
+  }else band.hidden=true;
+}
+
+function render(){
+  chrome();const app=$('#app');const r=route();
+  if(!S.me.role){app.innerHTML=S.mode?noAccessView():loginView();bindLogin();return}
+  if(S.me.role==='athlete'||S.viewAs){const aid=S.viewAs||S.me.athleteId;
+    if(r==='history')return athleteHistory(aid);return athleteToday(aid)}
+  if(r.startsWith('p-'))return playerPage(r.slice(2));
+  if(r==='build')return builderView();
+  if(r==='roster')return rosterView();
+  if(r==='setup')return setupView();
+  return staffView();
+}
+
+/* ============================================================ login */
+function loginView(){
+  return `<div class="login stack">
+    <div class="eyebrow">Sacred Heart Pitching</div>
+    <h1>SHU<span style="color:var(--red)">pitcher</span>hub</h1>
+    <p class="sub">Throwing programs, daily check-ins and workload for the staff. Sign in with the email Coach invited.</p>
+    <form class="panel stack" id="loginForm">
+      <label class="f">Email<input type="email" id="loginEmail" required placeholder="you@mail.sacredheart.edu" autocomplete="email"></label>
+      <button class="btn primary" type="submit" id="loginBtn">Email me a sign-in link</button>
+      <p class="sub" id="loginMsg" style="margin:0;font-size:13px"></p>
+    </form>
+    <div id="previewBox"></div>
+  </div>`;
+}
+function bindLogin(){
+  const f=$('#loginForm');if(!f)return;
+  f.onsubmit=async e=>{e.preventDefault();const email=$('#loginEmail').value.trim();const b=$('#loginBtn');b.disabled=true;
+    try{if(!sb)throw new Error('The sign-in service did not load. Check your connection and reload.');
+      const {error}=await sb.auth.signInWithOtp({email,options:{shouldCreateUser:true,emailRedirectTo:location.origin+location.pathname}});
+      if(error)throw error;$('#loginMsg').textContent=`Sign-in link sent to ${email}. Open it on this device.`;}
+    catch(err){$('#loginMsg').textContent=err.message||String(err)}finally{b.disabled=false}};
+  getSeed().then(seed=>{if(!seed)return;$('#previewBox').innerHTML=`<div class="panel stack"><b>Preview with the imported Drive data</b><span class="sub" style="font-size:13px">Opens the coach view using the throwing programs pulled from Google Drive. Changes stay in this browser.</span><button class="btn" id="startDemo">Open preview</button></div>`;
+    $('#startDemo').onclick=()=>{Demo.start(seed);go('staff');render()}});
+}
+function noAccessView(){
+  return `<div class="login stack"><h1>Almost there</h1>
+    <div class="panel stack"><p style="margin:0">You're signed in as <b>${esc(S.me.email)}</b>, but that email isn't on the pitching roster yet.</p>
+    <p class="sub" style="margin:0">Ask Coach to add this exact email to your roster spot, then reload this page.</p>
+    <button class="btn" onclick="signOut()">Sign out</button></div></div>`;
+}
+async function signOut(){if(S.mode==='demo'){S.mode=null;S.me={email:'',role:null};S.viewAs=null;location.hash='';render();return}await sb.auth.signOut();location.hash='';location.reload()}
+
+let SEED_CACHE;
+async function getSeed(){
+  if(SEED_CACHE!==undefined)return SEED_CACHE;
+  if(window.__SEED__)return SEED_CACHE=window.__SEED__;
+  try{const r=await fetch('shu-seed.json',{cache:'no-store'});SEED_CACHE=r.ok?await r.json():null}catch(e){SEED_CACHE=null}
+  return SEED_CACHE;
+}
+
+/* ============================================================ coach: staff overview */
+function seasonStrip(){
+  const cal=calendar();const start=addDays(TODAY,-14);const end=cal.reduce((m,c)=>c.date>m?c.date:m,TODAY);
+  const span=daysBetween(start,end)||1;const x=d=>Math.max(0,Math.min(100,daysBetween(start,d)/span*100));
+  const ramp=cal.find(c=>/ramp/i.test(c.label)),lb=cal.find(c=>/lives begin/i.test(c.label)),le=cal.find(c=>/lives end/i.test(c.label)),od=cal.find(c=>/opening/i.test(c.label));
+  let segs='';
+  if(ramp)segs+=`<div class="seg" style="left:0;width:${x(ramp.date)}%;background:var(--t-hybb);opacity:.55"></div>`;
+  if(lb&&le)segs+=`<div class="seg" style="left:${x(lb.date)}%;width:${x(le.date)-x(lb.date)}%;background:var(--t-live);opacity:.6"></div>`;
+  const mk=cal.map(c=>`<div class="mk" style="left:${x(c.date)}%"><span>${md(c.date)}</span><i></i></div>`).join('')+`<div class="mk today" style="left:${x(TODAY)}%"><span>Today</span><i></i></div>`;
+  const cd=cal.filter(c=>c.date>=TODAY).map(c=>`<div><b>${daysBetween(TODAY,c.date)}</b><span>days to ${esc(c.label.toLowerCase())} · ${md(c.date)}</span></div>`).join('');
+  return `<div class="panel"><div class="spread"><h2>Road to ${od?md(od.date):'Opening Day'}</h2><span class="legend"><span class="pill" style="background:var(--t-hybb);color:#fff;opacity:.8">Ramp-up</span><span class="pill" style="background:var(--t-live);color:#fff;opacity:.8">Lives</span></span></div>
+    <div class="countdown">${cd}</div><div class="season"><div class="bar">${segs}</div>${mk}</div></div>`;
+}
+function staffRows(){
+  const ws=monday(TODAY);
+  return S.athletes.map(a=>{
+    const plan=planDay(a.id,TODAY);const lc=lastCheckin(a.id);const ll=lastLog(a.id);const r=acwr(a.id,ws);
+    const planned=weekLoad(a.id,ws,'plan');
+    const dots=[];for(let i=6;i>=0;i--){const d=addDays(TODAY,-i);const l=logFor(a.id,d);dots.push(l?(l.checkin==null?'ok':ciCls(l.checkin)==='ok'?'ok':ciCls(l.checkin)):'')}
+    const flags=[];
+    if(lc&&daysBetween(lc.date,TODAY)<=3&&lc.checkin>=6)flags.push(['bad','Arm/body check-in '+lc.checkin+'/10',`${md(lc.date)}${lc.notes?': '+lc.notes:''}`]);
+    else if(lc&&daysBetween(lc.date,TODAY)<=3&&lc.checkin>=4)flags.push(['warn','Check-in '+lc.checkin+'/10',`${md(lc.date)}${lc.notes?': '+lc.notes:''}`]);
+    if(r.ratio!=null&&r.acute>0&&(r.ratio>1.3||r.ratio<0.8))flags.push(['warn','Load ratio '+r.ratio.toFixed(2),'This week '+r.acute+' vs 4-wk avg '+r.chronic.toFixed(1)]);
+    if(!plan&&planned===0)flags.push(['','No program this week','Build one in Build program']);
+    const since=ll?daysBetween(ll.date,TODAY):null;
+    if(a.email&&(since==null||since>=3))flags.push(['warn',since==null?'Hasn’t logged yet':`No log for ${since} days`,ll?'Last: '+md(ll.date):'']);
+    return {a,plan,lc,ll,r,planned,dots,flags,since};
+  });
+}
+function staffView(){
+  const rows=staffRows();
+  const order={SP:0,RP:1,'':2};
+  rows.sort((x,y)=>(order[x.a.role||'']-order[y.a.role||''])||x.a.name.localeCompare(y.a.name));
+  const flagged=rows.flatMap(r=>r.flags.filter(f=>f[0]).map(f=>({...r,f}))).sort((x,y)=>(x.f[0]==='bad'?0:1)-(y.f[0]==='bad'?0:1));
+  const ws=monday(TODAY);
+  const tbl=rows.map(({a,plan,lc,r,planned,dots,since})=>`<tr class="click" data-p="${a.id}">
+      <td><b>${esc(a.nickname||a.name)}</b><div class="sub" style="font-size:12px">${esc(a.name)}</div></td>
+      <td>${a.role?`<span class="pill role">${a.role}</span>`:'<span class="sub">—</span>'}</td>
+      <td>${chip(plan&&plan.type)}${plan&&(plan.throws||plan.intensity)?`<div class="sub mono" style="font-size:11px;margin-top:3px">${plan.throws?plan.throws+' thr':''}${plan.throws&&plan.intensity?' · ':''}${plan.intensity?plan.intensity+'%':''}</div>`:''}</td>
+      <td>${lc?`${ciBadge(lc.checkin)} <span class="sub" style="font-size:12px">${md(lc.date)}</span>`:'<span class="sub">—</span>'}</td>
+      <td><div class="dots">${dots.map(c=>`<i class="${c}"></i>`).join('')}</div></td>
+      <td class="r num">${r.acute}<span class="sub"> / ${planned}</span></td>
+      <td class="r">${r.ratio==null?'<span class="sub">—</span>':`<span class="pill ${ratioCls(r.ratio)}">${r.ratio.toFixed(2)}</span>`}</td>
+      <td class="sub" style="font-size:12px">${esc(a.targets&&a.targets.ip?`${a.targets.ip} IP${a.targets.pitches?' · '+a.targets.pitches+'p':''}`:'')}</td>
+    </tr>`).join('');
+  $('#app').innerHTML=`<div class="stack">
+    <div class="spread"><div><div class="eyebrow">${new Date().toLocaleDateString(undefined,{weekday:'long',month:'long',day:'numeric'})}</div><h1>Staff overview</h1></div>
+      <div class="row"><a class="btn primary" href="#build">Build a program</a></div></div>
+    ${seasonStrip()}
+    <div class="panel"><div class="spread"><h2>Needs a look</h2><span class="sub">${flagged.length} item${flagged.length===1?'':'s'}</span></div>
+      ${flagged.length?`<div class="flags">${flagged.map(x=>`<div class="flag ${x.f[0]}" data-p="${x.a.id}"><div><b>${esc(x.a.nickname||x.a.name)} · ${esc(x.f[1])}</b><small>${esc(x.f[2])}</small></div></div>`).join('')}</div>`:'<div class="empty">Nothing flagged. Every logged check-in is under 4 and loads are in range.</div>'}</div>
+    <div class="panel"><div class="spread"><h2>The staff, week of ${md(ws)}</h2><span class="sub" style="font-size:12px">Load = done / planned this week. Ratio = this week ÷ 4-week average, flagged outside 0.8–1.3.</span></div>
+      <div class="tbl-wrap"><table><thead><tr><th>Pitcher</th><th>Role</th><th>Today</th><th>Last check-in</th><th>Last 7 days</th><th class="r">Load</th><th class="r">Ratio</th><th>Game target</th></tr></thead><tbody>${tbl}</tbody></table></div></div>
+  </div>`;
+  document.querySelectorAll('[data-p]').forEach(el=>el.onclick=()=>go('p-'+el.dataset.p));
+}
+
+/* ============================================================ coach: player page */
+let PTAB='program',PWEEK=null;
+function playerPage(id){
+  const a=athlete(id);if(!a){$('#app').innerHTML='<div class="empty">That pitcher isn’t on the roster.</div>';return}
+  const prof=a.profile||{};const ws=monday(TODAY);const r=acwr(a.id,ws);const lc=lastCheckin(a.id);
+  const tabs=[['program','Program'],['log','Log'],['cards','Program cards'],['rtt','Return to throw'],['files','Files & original sheet']];
+  $('#app').innerHTML=`<div class="stack">
+    <div class="spread"><div><a href="#staff" class="sub" style="font-size:13px;text-decoration:none">← Staff</a>
+      <h1>${esc(a.name)}</h1>
+      <div class="row" style="margin-top:6px">${a.role?`<span class="pill role">${a.role==='SP'?'Starter':'Reliever'}</span>`:'<span class="pill">Role not set</span>'}
+        ${a.targets&&a.targets.ip?`<span class="pill">Game target ${a.targets.ip} IP${a.targets.pitches?' · '+a.targets.pitches+' pitches':''}</span>`:''}
+        ${a.email?`<span class="pill good">Invited · ${esc(a.email)}</span>`:`<span class="pill warn">No email yet</span>`}</div>
+      ${a.role_note?`<p class="sub prose" style="margin:8px 0 0">${esc(a.role_note)}</p>`:''}</div>
+      <div class="row"><button class="btn" id="viewAs">See his view</button><a class="btn primary" href="#build" id="buildFor">Build program</a></div></div>
+    <div class="grid3">
+      <div class="panel"><div class="eyebrow">This week's load</div><div class="kv" style="margin-top:8px"><div><b>${r.acute}</b><span>done</span></div><div><b>${weekLoad(a.id,ws,'plan')}</b><span>planned</span></div><div><b>${r.ratio==null||!r.acute?'—':r.ratio.toFixed(2)}</b><span>ratio ${r.ratio!=null&&r.acute?`<span class="pill ${ratioCls(r.ratio)}">${ratioCls(r.ratio)==='good'?'in range':'check'}</span>`:''}</span></div></div></div>
+      <div class="panel"><div class="eyebrow">Last check-in</div><div class="row" style="margin-top:8px">${lc?`${ciBadge(lc.checkin)}<span>${md(lc.date)} · ${esc(dayName(lc.date))}</span>`:'<span class="sub">None yet</span>'}</div>${lc&&lc.notes?`<p class="sub" style="margin:6px 0 0;font-size:13px">“${esc(lc.notes)}”</p>`:''}</div>
+      <div class="panel"><div class="eyebrow">Goals</div>${(prof.goals||[]).length?`<ul style="margin:8px 0 0;padding-left:18px">${prof.goals.map(g=>`<li>${esc(g.replace(/^\d+\.\s*/,''))}</li>`).join('')}</ul>`:'<p class="sub" style="margin:8px 0 0">No goals written in his sheet.</p>'}</div>
+    </div>
+    <div class="panel">${loadChart(a.id)}</div>
+    <div class="tabs" id="ptabs">${tabs.map(([k,t])=>`<button data-t="${k}" class="${PTAB===k?'on':''}">${t}</button>`).join('')}</div>
+    <div id="ptab"></div>
+  </div>`;
+  $('#viewAs').onclick=()=>{S.viewAs=a.id;go('today')};
+  $('#buildFor').onclick=e=>{e.preventDefault();BUILD.athletes=new Set([a.id]);go('build')};
+  document.querySelectorAll('#ptabs button').forEach(b=>b.onclick=()=>{PTAB=b.dataset.t;playerPage(id)});
+  const t=$('#ptab');
+  if(PTAB==='program')t.innerHTML=programTab(a);
+  if(PTAB==='log')t.innerHTML=logTab(a);
+  if(PTAB==='cards')t.innerHTML=cardsTab(a,true);
+  if(PTAB==='rtt')t.innerHTML=rttTab(a);
+  if(PTAB==='files')t.innerHTML=filesTab(a);
+  bindPlayer(a);
+}
+function loadChart(aid){
+  const end=monday(addDays(TODAY,21));const weeks=[];for(let k=13;k>=0;k--)weeks.push(addDays(end,-7*k));
+  const data=weeks.map(w=>({w,done:w<=monday(TODAY)?weekLoad(aid,w):null,plan:weekLoad(aid,w,'plan'),ci:(()=>{const v=[];for(let i=0;i<7;i++){const l=logFor(aid,addDays(w,i));if(l&&l.checkin!=null)v.push(+l.checkin)}return v.length?v.reduce((a,b)=>a+b,0)/v.length:null})()}));
+  const W=900,H=200,L=34,R=34,T=14,B=26;const max=Math.max(60,...data.map(d=>Math.max(d.done||0,d.plan||0)));
+  const bw=(W-L-R)/data.length;const y=v=>T+(H-T-B)*(1-v/max);const y2=v=>T+(H-T-B)*(1-v/10);
+  let g='';for(const t of [0,max/2,max].map(Math.round))g+=`<line x1="${L}" x2="${W-R}" y1="${y(t)}" y2="${y(t)}" stroke="var(--line)"/><text x="${L-6}" y="${y(t)+4}" text-anchor="end">${t}</text>`;
+  for(const t of [0,5,10])g+=`<text x="${W-R+6}" y="${y2(t)+4}">${t}</text>`;
+  data.forEach((d,i)=>{const x=L+i*bw;
+    g+=`<rect x="${x+bw*.18}" y="${y(d.plan)}" width="${bw*.64}" height="${H-B-y(d.plan)}" fill="none" stroke="var(--muted)" stroke-dasharray="3 3" rx="3"/>`;
+    if(d.done!=null)g+=`<rect x="${x+bw*.18}" y="${y(d.done)}" width="${bw*.64}" height="${H-B-y(d.done)}" fill="${d.w===monday(TODAY)?'var(--red)':'var(--ink)'}" opacity="${d.w===monday(TODAY)?1:.78}" rx="3"/>`;
+    if(i%2===0||data.length<10)g+=`<text x="${x+bw/2}" y="${H-8}" text-anchor="middle">${md(d.w)}</text>`});
+  const pts_=data.map((d,i)=>d.ci==null?null:[L+i*bw+bw/2,y2(d.ci)]);let path='';pts_.forEach(p=>{if(!p)return;path+=(path?'L':'M')+p[0].toFixed(1)+' '+p[1].toFixed(1)});
+  g+=`<path d="${path}" fill="none" stroke="var(--warn)" stroke-width="2"/>`+pts_.filter(Boolean).map(p=>`<circle cx="${p[0]}" cy="${p[1]}" r="3.5" fill="var(--warn)"/>`).join('');
+  return `<div class="spread"><h2>Weekly workload</h2><span class="legend"><span class="pill"><svg width="10" height="10"><rect width="10" height="10" rx="2" fill="var(--ink)"/></svg>Done</span><span class="pill"><svg width="10" height="10"><rect x=".5" y=".5" width="9" height="9" rx="2" fill="none" stroke="var(--muted)" stroke-dasharray="2 2"/></svg>Planned</span><span class="pill"><svg width="10" height="10"><circle cx="5" cy="5" r="4" fill="var(--warn)"/></svg>Avg check-in (0–10, right axis)</span></span></div>
+    <div style="overflow-x:auto"><svg viewBox="0 0 ${W} ${H}" style="width:100%;min-width:620px;height:auto" role="img" aria-label="Weekly workload points">${g}</svg></div>`;
+}
+function weekCal(aid,startWs,weeks,editable){
+  let h=`<div class="cal"><div class="h">Week</div>${DAYS.map(d=>`<div class="h">${d}</div>`).join('')}<div class="h">Load</div>`;
+  for(let k=0;k<weeks;k++){const ws=addDays(startWs,7*k);h+=`<div class="wk">${md(ws)}</div>`;
+    for(let i=0;i<7;i++){const d=addDays(ws,i);const p=planDay(aid,d);const l=logFor(aid,d);
+      const shown=(l&&l.type)||(p&&p.type);
+      const meta=[p&&p.throws?p.throws+' thr':'',p&&p.intensity?p.intensity+'%':'',l&&l.pitches?l.pitches+'p':'',l&&l.innings?l.innings+' IP':''].filter(Boolean).join(' · ');
+      h+=`<div class="d ${d===TODAY?'today':''}" data-day="${d}" data-aid="${aid}"><span class="dn">${md(d)}</span>${shown?chip(shown,l&&l.type&&p&&p.type&&l.type!==p.type?' *':''):'<span class="sub" style="font-size:11px">—</span>'}${meta?`<span class="meta mono">${esc(meta)}</span>`:''}${l&&l.checkin!=null?ciBadge(l.checkin):''}</div>`}
+    const r=acwr(aid,ws);h+=`<div class="tot"><span class="num"><b>${weekLoad(aid,ws)}</b><span class="sub">/${weekLoad(aid,ws,'plan')}</span></span>${r.ratio!=null&&r.acute?`<span class="pill ${ratioCls(r.ratio)}">${r.ratio.toFixed(2)}</span>`:''}</div>`}
+  return h+'</div>';
+}
+function programTab(a){
+  if(!PWEEK)PWEEK=addDays(monday(TODAY),-14);
+  const progs=S.programs.filter(p=>p.athlete_id===a.id).sort((x,y)=>String(y.created_at).localeCompare(String(x.created_at)));
+  return `<div class="stack"><div class="panel"><div class="spread"><h2>Calendar</h2><div class="row"><button class="btn small" id="pPrev">← 4 wks</button><button class="btn small" id="pNow">This week</button><button class="btn small" id="pNext">4 wks →</button></div></div>
+    <p class="sub" style="margin:-4px 0 10px;font-size:12.5px">Tap a day to see the plan or log what he did. * means he did something different from the plan.</p>
+    <div style="overflow-x:auto">${weekCal(a.id,PWEEK,6)}</div></div>
+    <div class="panel"><h2>Programs</h2>${progs.length?`<div class="tbl-wrap"><table><thead><tr><th>Program</th><th>Dates</th><th class="r">Days</th><th></th></tr></thead><tbody>${progs.map(p=>`<tr><td><b>${esc(p.title)}</b>${p.source==='drive'?' <span class="pill">from Drive</span>':''}</td><td class="mono">${md(p.start_date)} – ${md(p.end_date)}</td><td class="r num">${Object.keys(p.days||{}).length}</td><td class="r"><button class="btn small" data-edit="${p.id}">Edit</button> <button class="btn small danger" data-delp="${p.id}">Delete</button></td></tr>`).join('')}</tbody></table></div>`:'<div class="empty">No programs yet.</div>'}</div></div>`;
+}
+function logTab(a){
+  const logs=S.logs.filter(l=>l.athlete_id===a.id).sort((x,y)=>y.date.localeCompare(x.date));
+  return `<div class="panel"><div class="spread"><h2>Daily log</h2><button class="btn small" data-day="${TODAY}" data-aid="${a.id}">Add today</button></div>${logs.length?`<div class="tbl-wrap"><table><thead><tr><th>Date</th><th>Did</th><th>Check-in</th><th class="r">Throws</th><th class="r">Effort</th><th class="r">IP</th><th class="r">Pitches</th><th>Pen</th><th>Notes</th></tr></thead><tbody>${logs.map(l=>`<tr class="click" data-day="${l.date}" data-aid="${a.id}"><td class="mono">${dayName(l.date)} ${md(l.date)}</td><td>${chip(doneType(a.id,l.date))}</td><td>${ciBadge(l.checkin)}</td><td class="r num">${l.throws??''}</td><td class="r num">${l.intensity!=null?l.intensity+'%':''}</td><td class="r num">${l.innings??''}</td><td class="r num">${l.pitches??''}</td><td class="mono">${esc(l.bullpen??'')}</td><td style="min-width:220px">${esc(l.notes??'')}</td></tr>`).join('')}</tbody></table></div>`:'<div class="empty">Nothing logged yet.</div>'}</div>`;
+}
+function cardHtml(type,card,editable){
+  if(!card)return '';
+  return `<div class="excard"><header><div>${chip(type)} <span class="sub" style="font-size:12.5px">${esc(card.subtitle||'')}</span></div>${editable?`<button class="btn small" data-editcard="${esc(type)}">Edit</button>`:''}</header>
+    <div class="exs">${card.exercises.length?card.exercises.map(e=>`<div class="ex"><span class="nm">${esc(e.name)}</span><span class="dose">${[e.sets!=null?e.sets+'×':'' ,e.reps??'',e.ball?' · '+e.ball:''].join('')}</span>${e.notes?`<span class="nt">${esc(e.notes)}</span>`:''}</div>`).join(''):'<p class="sub" style="font-size:13px">No exercises listed.</p>'}</div></div>`;
+}
+function cardsTab(a,editable){
+  const prof=a.profile||{};const cards=prof.cards||{};
+  const order=types().map(t=>t.name).filter(n=>n!=='Rest');
+  return `<div class="stack">
+    <div class="panel"><div class="spread"><h2>Warm up / everydays</h2>${editable?'<button class="btn small" data-editcard="__warmup">Edit</button>':''}</div>
+      ${(prof.warmup||[]).length?`<div class="excard"><div class="exs">${prof.warmup.map(e=>`<div class="ex"><span class="nm">${esc(e.name)}</span><span class="dose">${esc([e.sets!=null?e.sets+'×':'',e.reps??''].join(''))}</span>${e.notes?`<span class="nt">${esc(e.notes)}</span>`:''}</div>`).join('')}</div></div>`:'<div class="empty">No warm-up in his sheet.</div>'}
+      ${prof.warmupNote?`<p class="sub" style="font-size:13px">${esc(prof.warmupNote)}</p>`:''}</div>
+    <div class="grid2">${order.map(t=>cards[t]?cardHtml(t,cards[t],editable):(editable?`<div class="excard"><header>${chip(t)}<button class="btn small" data-editcard="${esc(t)}">Add card</button></header></div>`:'')).join('')}</div></div>`;
+}
+function rttTab(a){
+  const r=(a.profile||{}).rtt||[];
+  if(!r.length)return '<div class="empty">No return-to-throw program for him.</div>';
+  return `<div class="stack">${r.map(p=>`<div class="panel"><h2>${esc(p.title)}</h2><div class="stack">${p.weeks.map(w=>`<div><h3 style="margin-bottom:6px">${esc(w.label)}</h3><div style="overflow-x:auto"><div class="rtt">${DAYS.map(d=>`<div><b>${d}</b>${(w.days[d]||[]).map(x=>`${x.cat?`<span class="sub">${esc(x.cat)}:</span> `:''}${esc(x.text)}`).join('<br>')||'<span class="sub">—</span>'}</div>`).join('')}</div></div></div>`).join('')}</div></div>`).join('')}</div>`;
+}
+function filesTab(a){
+  const d=(a.profile||{}).drive||{};const ar=a.archive||{};const tabsList=Object.keys(ar);
+  return `<div class="stack"><div class="panel"><div class="spread"><h2>Drive folder</h2>${d.folder?`<a class="btn small" href="${esc(d.folder)}" target="_blank" rel="noopener">Open folder ↗</a>`:''}</div>
+    ${(d.files||[]).length?`<div class="tbl-wrap"><table><tbody>${d.files.map(f=>`<tr><td>${esc(f.title)}</td><td class="sub">${f.type==='sheet'?'Sheet':'Doc'}</td><td class="r"><a href="${esc(f.url)}" target="_blank" rel="noopener">Open ↗</a></td></tr>`).join('')}</tbody></table></div>`:'<div class="empty">No Drive files linked.</div>'}</div>
+    <div class="panel"><div class="spread"><h2>Original sheet</h2>${tabsList.length?`<select id="arTab">${tabsList.map(t=>`<option>${esc(t)}</option>`).join('')}</select>`:''}</div>
+    <p class="sub" style="margin:-4px 0 10px;font-size:12.5px">Every cell from his Google Sheet, kept exactly as it was so nothing is lost in the move.</p><div id="arView"></div></div></div>`;
+}
+function renderSheet(cells){
+  const keys=Object.keys(cells||{});if(!keys.length)return '<div class="empty">Empty tab.</div>';
+  const colN=s=>s.split('').reduce((n,c)=>n*26+c.charCodeAt(0)-64,0);const colS=n=>{let s='';while(n){const m=(n-1)%26;s=String.fromCharCode(65+m)+s;n=(n-m-1)/26}return s};
+  let maxR=0,maxC=0;const m={};for(const k of keys){const [,c,r]=k.match(/^([A-Z]+)(\d+)$/);const ci=colN(c),ri=+r;if(ri>400)continue;maxR=Math.max(maxR,ri);maxC=Math.max(maxC,ci);m[ri+'|'+ci]=cells[k]}
+  let h='<div class="tbl-wrap" style="max-height:560px"><table class="sheet"><thead><tr><th></th>';for(let c=1;c<=maxC;c++)h+=`<th>${colS(c)}</th>`;h+='</tr></thead><tbody>';
+  for(let r=1;r<=maxR;r++){let any=false,row=`<tr><th>${r}</th>`;for(let c=1;c<=maxC;c++){const v=m[r+'|'+c];if(v!=null)any=true;row+=`<td>${v==null?'':esc(typeof v==='string'&&v.startsWith('=')?'':v)}</td>`}if(any)h+=row+'</tr>'}
+  return h+'</tbody></table></div>';
+}
+function bindPlayer(a){
+  document.querySelectorAll('[data-day]').forEach(el=>el.onclick=e=>{e.stopPropagation();dayDrawer(el.dataset.aid,el.dataset.day)});
+  const pv=$('#pPrev');if(pv){pv.onclick=()=>{PWEEK=addDays(PWEEK,-28);playerPage(a.id)};$('#pNext').onclick=()=>{PWEEK=addDays(PWEEK,28);playerPage(a.id)};$('#pNow').onclick=()=>{PWEEK=addDays(monday(TODAY),-14);playerPage(a.id)}}
+  document.querySelectorAll('[data-edit]').forEach(b=>b.onclick=()=>{const p=S.programs.find(x=>x.id===b.dataset.edit);loadProgramIntoBuilder(p);go('build')});
+  document.querySelectorAll('[data-delp]').forEach(b=>b.onclick=()=>confirmBox(`Delete this program? Logged days stay; only the plan is removed.`,'Delete program',async()=>{await API.deleteProgram(b.dataset.delp);toast('Program deleted');playerPage(a.id)}));
+  document.querySelectorAll('[data-editcard]').forEach(b=>b.onclick=()=>cardEditor(a,b.dataset.editcard));
+  const at=$('#arTab');if(at){const show=()=>$('#arView').innerHTML=renderSheet(a.archive[at.value]);at.onchange=show;show()}
+}
+
+/* ============================================================ drawers */
+function closeLayer(){$('#layer').innerHTML=''}
+function openLayer(html){$('#layer').innerHTML=`<div class="scrim" id="scrim"></div><aside class="drawer" role="dialog" aria-modal="true">${html}</aside>`;$('#scrim').onclick=closeLayer}
+function confirmBox(msg,label,fn){openLayer(`<h2>Are you sure?</h2><p>${esc(msg)}</p><div class="row"><button class="btn danger" id="cOk">${esc(label)}</button><button class="btn" id="cNo">Cancel</button></div>`);$('#cNo').onclick=closeLayer;$('#cOk').onclick=async()=>{closeLayer();await fn()}}
+function logForm(aid,date,prefix){
+  const l=logFor(aid,date)||{};const p=planDay(aid,date);const cur=l.type||(p&&p.type)||'';
+  return `<div class="stack">
+    <div><div class="eyebrow">What did you do?</div><div class="typepick" id="${prefix}type" style="margin-top:8px">${types().map(t=>`<button type="button" class="chip ${tcls(t.name)} ${cur===t.name?'on':''}" data-v="${esc(t.name)}">${esc(t.name)}</button>`).join('')}</div></div>
+    <div><div class="eyebrow">Post-throw check-in · 0 = fresh, 10 = awful pain</div><div class="scale" id="${prefix}ci" style="margin-top:8px">${Array.from({length:11},(_,i)=>`<button type="button" class="${l.checkin===i?'on':''}" data-v="${i}">${i}</button>`).join('')}</div></div>
+    <div class="row"><label class="f" style="flex:1">Throws<input type="number" id="${prefix}throws" min="0" value="${l.throws??''}" placeholder="${p&&p.throws?p.throws:''}"></label>
+      <label class="f" style="flex:1">Effort %<input type="number" id="${prefix}int" min="0" max="100" value="${l.intensity??''}" placeholder="${p&&p.intensity?p.intensity:''}"></label></div>
+    <div class="row"><label class="f" style="flex:1">Innings<input type="number" step="0.1" id="${prefix}ip" value="${l.innings??''}"></label>
+      <label class="f" style="flex:1">Pitch count<input type="number" id="${prefix}pc" value="${l.pitches??''}"></label>
+      <label class="f" style="flex:1">Bullpen<input type="text" id="${prefix}pen" value="${esc(l.bullpen??'')}" placeholder="e.g. 25 FB / 10 SL"></label></div>
+    <label class="f">Notes<textarea id="${prefix}notes" placeholder="How did the arm and body feel?">${esc(l.notes??'')}</textarea></label>
+  </div>`;
+}
+function bindLogForm(prefix){
+  const pick=(id)=>{const box=$('#'+prefix+id);box.querySelectorAll('button').forEach(b=>b.onclick=()=>{const was=b.classList.contains('on');box.querySelectorAll('button').forEach(x=>x.classList.remove('on'));if(!was)b.classList.add('on')})};
+  pick('type');pick('ci');
+}
+function readLogForm(prefix,aid,date){
+  const t=$('#'+prefix+'type .on'),c=$('#'+prefix+'ci .on');
+  return {athlete_id:aid,date,type:t?t.dataset.v:null,checkin:c?+c.dataset.v:null,throws:num($('#'+prefix+'throws').value),intensity:num($('#'+prefix+'int').value),
+    innings:num($('#'+prefix+'ip').value),pitches:num($('#'+prefix+'pc').value),bullpen:$('#'+prefix+'pen').value.trim()||null,notes:$('#'+prefix+'notes').value.trim()||null,source:'app'};
+}
+function dayDrawer(aid,date){
+  const a=athlete(aid);const p=planDay(aid,date);const card=p&&p.type&&((a.profile||{}).cards||{})[p.type];
+  openLayer(`<div class="spread"><div><div class="eyebrow">${esc(a.nickname||a.name)}</div><h2>${dayName(date)} ${md(date)}</h2></div><button class="btn small ghost" id="dClose">Close</button></div>
+    <div class="panel"><div class="eyebrow">Planned</div><div class="row" style="margin-top:6px">${chip(p&&p.type)}${p&&p.throws?`<span class="mono">${p.throws} throws</span>`:''}${p&&p.intensity?`<span class="mono">${p.intensity}%</span>`:''}</div>${p&&p.notes?`<p style="margin:8px 0 0">${esc(p.notes)}</p>`:''}${p?`<p class="sub" style="font-size:12px;margin:6px 0 0">${esc(p.program.title)}</p>`:''}</div>
+    ${card?cardHtml(p.type,card,false):''}
+    <h3>Log</h3>${logForm(aid,date,'dl')}
+    <div class="row"><button class="btn primary" id="dSave">Save log</button></div>`);
+  bindLogForm('dl');$('#dClose').onclick=closeLayer;
+  $('#dSave').onclick=async()=>{try{await API.saveLog(readLogForm('dl',aid,date));closeLayer();toast('Saved');render()}catch(e){toast(e.message)}};
+}
+function cardEditor(a,type){
+  const prof=a.profile=a.profile||{};prof.cards=prof.cards||{};
+  const isWU=type==='__warmup';
+  const card=isWU?{subtitle:prof.warmupNote||'',exercises:JSON.parse(JSON.stringify(prof.warmup||[]))}:JSON.parse(JSON.stringify(prof.cards[type]||{title:type,subtitle:'',exercises:[]}));
+  const drills=(S.settings.library||{}).drills||[];const balls=(S.settings.library||{}).ballWeights||[];
+  const rows=()=>card.exercises.map((e,i)=>`<div class="edit-ex" data-i="${i}"><input list="dl-drills" value="${esc(e.name)}" data-k="name" placeholder="Exercise"><input value="${esc(e.sets??'')}" data-k="sets" placeholder="Sets"><input value="${esc(e.reps??'')}" data-k="reps" placeholder="Reps">${isWU?'<span></span>':`<input list="dl-balls" value="${esc(e.ball??'')}" data-k="ball" placeholder="Ball">`}<input value="${esc(e.notes??'')}" data-k="notes" placeholder="Coach notes"><button class="btn small ghost" data-rm="${i}" aria-label="Remove">✕</button></div>`).join('');
+  const draw=()=>{openLayer(`<div class="spread"><div><div class="eyebrow">${esc(a.name)}</div><h2>${isWU?'Warm up / everydays':esc(type)+' card'}</h2></div><button class="btn small ghost" id="ceClose">Close</button></div>
+    <label class="f">${isWU?'Note under the warm-up':'Card subtitle'}<input type="text" id="ceSub" value="${esc(card.subtitle||'')}"></label>
+    <div id="ceRows">${rows()}</div><datalist id="dl-drills">${drills.map(d=>`<option value="${esc(d)}">`).join('')}</datalist><datalist id="dl-balls">${balls.map(d=>`<option value="${esc(d)}">`).join('')}</datalist>
+    <div class="row"><button class="btn small" id="ceAdd">Add exercise</button></div>
+    <div class="row"><button class="btn primary" id="ceSave">Save</button><button class="btn" id="ceAll">Save and copy to…</button></div>`);
+    $('#ceClose').onclick=closeLayer;
+    const sync=()=>{document.querySelectorAll('#ceRows .edit-ex').forEach(r=>{const e=card.exercises[+r.dataset.i];r.querySelectorAll('input').forEach(inp=>{let v=inp.value.trim();e[inp.dataset.k]=v===''?null:(inp.dataset.k==='sets'&&!isNaN(+v)?+v:v)})});card.subtitle=$('#ceSub').value};
+    $('#ceAdd').onclick=()=>{sync();card.exercises.push({name:'',sets:1,reps:null,ball:null,notes:null});draw()};
+    document.querySelectorAll('[data-rm]').forEach(b=>b.onclick=()=>{sync();card.exercises.splice(+b.dataset.rm,1);draw()});
+    const save=async(targets)=>{sync();card.exercises=card.exercises.filter(e=>e.name);
+      for(const t of targets){const p=t.profile=t.profile||{};p.cards=p.cards||{};if(isWU){p.warmup=JSON.parse(JSON.stringify(card.exercises));p.warmupNote=card.subtitle}else p.cards[type]=JSON.parse(JSON.stringify(card));await API.saveAthlete(t)}
+      closeLayer();toast(targets.length>1?`Saved to ${targets.length} pitchers`:'Card saved');render()};
+    $('#ceSave').onclick=()=>save([a]);
+    $('#ceAll').onclick=()=>{sync();openLayer(`<h2>Copy this card to</h2><div class="athlete-pick" id="cpPick">${S.athletes.map(x=>`<label class="${x.id===a.id?'on':''}"><input type="checkbox" value="${x.id}" ${x.id===a.id?'checked':''}>${esc(x.nickname||x.name)}</label>`).join('')}</div><div class="row"><button class="btn primary" id="cpGo">Save to selected</button><button class="btn" id="cpBack">Back</button></div>`);
+      $('#cpPick').onchange=e=>e.target.parentElement.classList.toggle('on',e.target.checked);$('#cpBack').onclick=draw;
+      $('#cpGo').onclick=()=>save([...document.querySelectorAll('#cpPick input:checked')].map(i=>athlete(i.value)))};
+  };draw();
+}
+
+/* ============================================================ builder */
+const BUILD={athletes:new Set(),title:'',start:monday(TODAY),weeks:4,grid:null,editing:null};
+function blankGrid(n){return Array.from({length:n},()=>Array.from({length:7},()=>({type:'',throws:null,intensity:null,notes:''})))}
+function loadProgramIntoBuilder(p){
+  const start=monday(p.start_date);const n=Math.max(1,Math.ceil((daysBetween(start,p.end_date)+1)/7));
+  BUILD.grid=blankGrid(n);for(const d in p.days){const k=daysBetween(start,d);if(k<0)continue;BUILD.grid[Math.floor(k/7)][k%7]={type:'',throws:null,intensity:null,notes:'',...p.days[d]}}
+  Object.assign(BUILD,{athletes:new Set([p.athlete_id]),title:p.title,start,weeks:n,editing:p.id});
+}
+function builderView(){
+  if(!BUILD.grid||BUILD.grid.length!==BUILD.weeks){const g=blankGrid(BUILD.weeks);(BUILD.grid||[]).forEach((w,i)=>{if(i<g.length)g[i]=w});BUILD.grid=g}
+  const groups=[['SP','Starters'],['RP','Relievers'],['','Not assigned']];
+  const T=types();
+  const first=[...BUILD.athletes][0];
+  $('#app').innerHTML=`<div class="stack">
+    <div class="spread"><div><div class="eyebrow">${BUILD.editing?'Editing a program':'New program'}</div><h1>Build a throwing program</h1></div>
+      <div class="row"><button class="btn" id="bClear">Start over</button><button class="btn primary" id="bSave">${BUILD.editing?'Save changes':'Assign program'}</button></div></div>
+    <div class="panel stack">
+      <div class="row" style="align-items:flex-end">
+        <label class="f" style="flex:2;min-width:220px">Program name<input type="text" id="bTitle" value="${esc(BUILD.title)}" placeholder="e.g. Ramp-up · Nov 9 – Dec 4"></label>
+        <label class="f">Starts (Monday)<input type="date" id="bStart" value="${BUILD.start}"></label>
+        <label class="f" style="width:110px">Weeks<input type="number" id="bWeeks" min="1" max="20" value="${BUILD.weeks}"></label>
+      </div>
+      ${BUILD.editing?`<p class="sub" style="margin:0">Editing ${esc(athlete(first)?.name||'')}'s program.</p>`:`<div><div class="eyebrow" style="margin-bottom:8px">Assign to</div>
+        ${groups.map(([r,l])=>{const xs=S.athletes.filter(a=>(a.role||'')===r);if(!xs.length)return '';return `<div class="row" style="margin-bottom:8px;align-items:flex-start"><button class="btn small ghost" data-grp="${r}" style="width:104px;justify-content:flex-start">${l}</button><div class="athlete-pick" style="flex:1">${xs.map(a=>`<label class="${BUILD.athletes.has(a.id)?'on':''}"><input type="checkbox" value="${a.id}" ${BUILD.athletes.has(a.id)?'checked':''}>${esc(a.nickname||a.name)}</label>`).join('')}</div></div>`}).join('')}</div>`}
+    </div>
+    <div class="panel stack">
+      <div class="spread"><h2>Week by week</h2>
+        <div class="row">
+          <select id="bTpl"><option value="">Load a template…</option>${S.templates.map(t=>`<option value="${t.id}">${esc(t.title)} (${t.weeks.length} wk)</option>`).join('')}${S.athletes.filter(a=>S.programs.some(p=>p.athlete_id===a.id)).map(a=>`<option value="copy:${a.id}">Copy ${esc(a.nickname||a.name)}'s plan from this start date</option>`).join('')}</select>
+          <button class="btn small" id="bRepeat">Repeat week 1 down</button><button class="btn small" id="bSaveTpl">Save as template</button></div></div>
+      <div class="legend">${T.map(t=>`<span class="chip ${tcls(t.name)}">${esc(t.name)} · ${t.load}</span>`).join('')}</div>
+      <p class="sub" style="margin:0;font-size:12.5px">Pick each day's type. Throws and effort % are optional targets the pitcher sees on his Today screen. Numbers on the right are workload points (same scale as the sheets) and, when a pitcher is selected, his projected ratio including his history.</p>
+      <div style="overflow-x:auto"><div class="bgrid" id="bgrid"></div></div>
+    </div></div>`;
+  drawBuilderGrid();
+  $('#bTitle').oninput=e=>BUILD.title=e.target.value;
+  $('#bStart').onchange=e=>{BUILD.start=monday(e.target.value||TODAY);builderView()};
+  $('#bWeeks').onchange=e=>{BUILD.weeks=Math.max(1,Math.min(20,+e.target.value||1));builderView()};
+  document.querySelectorAll('.athlete-pick input').forEach(i=>i.onchange=()=>{i.checked?BUILD.athletes.add(i.value):BUILD.athletes.delete(i.value);i.parentElement.classList.toggle('on',i.checked);drawBuilderGrid()});
+  document.querySelectorAll('[data-grp]').forEach(b=>b.onclick=()=>{const xs=S.athletes.filter(a=>(a.role||'')===b.dataset.grp);const all=xs.every(a=>BUILD.athletes.has(a.id));xs.forEach(a=>all?BUILD.athletes.delete(a.id):BUILD.athletes.add(a.id));builderView()});
+  $('#bRepeat').onclick=()=>{BUILD.grid=BUILD.grid.map((w,i)=>i===0?w:BUILD.grid[0].map(c=>({...c})));drawBuilderGrid()};
+  $('#bClear').onclick=()=>{Object.assign(BUILD,{athletes:new Set(),title:'',start:monday(TODAY),weeks:4,grid:null,editing:null});builderView()};
+  $('#bTpl').onchange=e=>{const v=e.target.value;if(!v)return;
+    if(v.startsWith('copy:')){const aid=v.slice(5);BUILD.grid=BUILD.grid.map((w,k)=>w.map((c,i)=>{const p=planDay(aid,addDays(BUILD.start,7*k+i));return p?{type:p.type||'',throws:p.throws??null,intensity:p.intensity??null,notes:p.notes||''}:{type:'',throws:null,intensity:null,notes:''}}))}
+    else{const t=S.templates.find(x=>x.id===v);BUILD.weeks=t.weeks.length;BUILD.grid=JSON.parse(JSON.stringify(t.weeks));if(!BUILD.title)BUILD.title=t.title}
+    builderView()};
+  $('#bSaveTpl').onclick=()=>{openLayer(`<h2>Save as template</h2><label class="f">Template name<input type="text" id="tplName" value="${esc(BUILD.title)}"></label><div class="row"><button class="btn primary" id="tplGo">Save template</button><button class="btn" id="tplNo">Cancel</button></div>${S.templates.length?`<h3>Saved templates</h3>${S.templates.map(t=>`<div class="spread"><span>${esc(t.title)}</span><button class="btn small danger" data-deltpl="${t.id}">Delete</button></div>`).join('')}`:''}`);
+    $('#tplNo').onclick=closeLayer;$('#tplGo').onclick=async()=>{const title=$('#tplName').value.trim();if(!title){toast('Give the template a name');return}await API.saveTemplate({id:uid(),title,weeks:JSON.parse(JSON.stringify(BUILD.grid)),created_at:new Date().toISOString()});closeLayer();toast('Template saved');builderView()};
+    document.querySelectorAll('[data-deltpl]').forEach(b=>b.onclick=async()=>{await API.deleteTemplate(b.dataset.deltpl);closeLayer();toast('Template deleted');builderView()})};
+  $('#bSave').onclick=saveBuild;
+}
+function drawBuilderGrid(){
+  const T=types();const first=[...BUILD.athletes][0];
+  let h=`<div class="cal-h"></div>${DAYS.map(d=>`<div class="h" style="font:600 12px var(--f-display);letter-spacing:.1em;text-transform:uppercase;color:var(--muted);padding:4px 6px">${d}</div>`).join('')}<div class="h" style="font:600 12px var(--f-display);letter-spacing:.1em;text-transform:uppercase;color:var(--muted);padding:4px 6px">Week</div>`;
+  BUILD.grid.forEach((w,k)=>{const ws=addDays(BUILD.start,7*k);
+    h+=`<div class="wk mono" style="font-size:12px;color:var(--muted);padding:8px 2px">Wk ${k+1}<br>${md(ws)}</div>`;
+    w.forEach((c,i)=>{const d=addDays(ws,i);const col=c.type?`var(--t-${({'Rest':'rest','Recovery':'recovery','Hybrid B':'hybb','Hybrid A':'hyba','Bullpen':'pen','Velo':'velo','Live/Game':'live'})[c.type]||'rest'})`:'var(--line)';
+      const mark=calendar().find(x=>x.date===d);
+      h+=`<div class="bcell" style="border-top-color:${col}"><span class="mono" style="font-size:11px;color:var(--muted)">${md(d)}${mark?` · <b style="color:var(--red)">${esc(mark.label)}</b>`:''}</span>
+        <select data-k="${k}" data-i="${i}" data-f="type" aria-label="Type ${md(d)}"><option value="">—</option>${T.map(t=>`<option ${c.type===t.name?'selected':''}>${esc(t.name)}</option>`).join('')}</select>
+        <div class="mini"><input type="number" min="0" placeholder="thr" value="${c.throws??''}" data-k="${k}" data-i="${i}" data-f="throws" aria-label="Throws"><input type="number" min="0" max="100" placeholder="%" value="${c.intensity??''}" data-k="${k}" data-i="${i}" data-f="intensity" aria-label="Effort percent"></div>
+        <input type="text" placeholder="note" value="${esc(c.notes||'')}" data-k="${k}" data-i="${i}" data-f="notes" style="padding:3px 5px;font-size:12px" aria-label="Note"></div>`});
+    const load=w.reduce((s,c)=>s+pts(c.type),0);const thr=w.reduce((s,c)=>s+(+c.throws||0),0);
+    let ratio='';if(first){const hist=[];for(let j=3;j>=1;j--){const pw=addDays(ws,-7*j);const kk=k-j;hist.push(kk>=0?BUILD.grid[kk].reduce((s,c)=>s+pts(c.type),0):weekLoad(first,pw))}
+      const f=firstWeek(first);const arr=[...hist,load];const chronic=arr.reduce((a,b)=>a+b,0)/arr.length;const r=chronic?Math.round(load/chronic*100)/100:null;if(r!=null&&load)ratio=`<span class="pill ${ratioCls(r)}">${r.toFixed(2)}</span>`}
+    h+=`<div class="tot" style="display:flex;flex-direction:column;gap:4px;padding:6px 2px;font-size:12px"><span class="num"><b>${load}</b> pts</span>${thr?`<span class="num sub">${thr} thr</span>`:''}${ratio}</div>`});
+  $('#bgrid').innerHTML=h;
+  document.querySelectorAll('#bgrid [data-f]').forEach(el=>{const ev=el.tagName==='SELECT'?'change':'input';el.addEventListener(ev,()=>{const c=BUILD.grid[+el.dataset.k][+el.dataset.i];const f=el.dataset.f;c[f]=f==='type'||f==='notes'?el.value:num(el.value);if(f==='type')drawBuilderGrid()})});
+}
+async function saveBuild(){
+  const ids=[...BUILD.athletes];if(!ids.length){toast('Pick at least one pitcher');return}
+  const title=BUILD.title.trim()||`Program from ${md(BUILD.start)}`;
+  const days={};BUILD.grid.forEach((w,k)=>w.forEach((c,i)=>{if(!c.type&&!c.notes)return;const o={type:c.type||null};if(c.throws!=null)o.throws=c.throws;if(c.intensity!=null)o.intensity=c.intensity;if(c.notes)o.notes=c.notes;days[addDays(BUILD.start,7*k+i)]=o}));
+  if(!Object.keys(days).length){toast('Fill in at least one day');return}
+  const end=addDays(BUILD.start,7*BUILD.weeks-1);
+  try{
+    if(BUILD.editing){const p=S.programs.find(x=>x.id===BUILD.editing);Object.assign(p,{title,start_date:BUILD.start,end_date:end,days:JSON.parse(JSON.stringify(days))});await API.saveProgram(p)}
+    else for(const aid of ids)await API.saveProgram({id:uid(),athlete_id:aid,title,start_date:BUILD.start,end_date:end,days:JSON.parse(JSON.stringify(days)),source:'app',created_at:new Date().toISOString()});
+    toast(BUILD.editing?'Program updated':`Assigned to ${ids.length} pitcher${ids.length>1?'s':''}`);
+    const back=ids.length===1?'p-'+ids[0]:'staff';Object.assign(BUILD,{grid:null,editing:null,title:''});BUILD.athletes=new Set();go(back);
+  }catch(e){toast(e.message)}
+}
+
+/* ============================================================ roster & invites */
+function rosterView(){
+  $('#app').innerHTML=`<div class="stack">
+    <div class="spread"><div><h1>Roster & invites</h1><p class="sub" style="margin:4px 0 0">Add each pitcher's email, then send the invite. He gets a one-tap sign-in link and lands on his own Today screen.</p></div>
+      <div class="row"><button class="btn" id="rAdd">Add pitcher</button><button class="btn primary" id="rSendAll">Send all pending invites</button></div></div>
+    <div class="panel"><div class="tbl-wrap"><table><thead><tr><th>Pitcher</th><th>Short name</th><th>Role</th><th>Game target</th><th style="min-width:240px">Email</th><th>Invite</th><th></th></tr></thead><tbody>
+    ${S.athletes.slice().sort((a,b)=>a.name.localeCompare(b.name)).map(a=>`<tr data-id="${a.id}">
+      <td><b>${esc(a.name)}</b></td>
+      <td><input type="text" data-k="nickname" value="${esc(a.nickname||'')}" style="width:110px"></td>
+      <td><select data-k="role"><option value="" ${!a.role?'selected':''}>—</option><option value="SP" ${a.role==='SP'?'selected':''}>Starter</option><option value="RP" ${a.role==='RP'?'selected':''}>Reliever</option></select></td>
+      <td class="row" style="flex-wrap:nowrap;gap:4px"><input type="number" step="0.5" data-k="ip" value="${a.targets?.ip??''}" placeholder="IP" style="width:64px"><input type="number" data-k="pitches" value="${a.targets?.pitches??''}" placeholder="P" style="width:64px"></td>
+      <td><input type="email" data-k="email" value="${esc(a.email||'')}" placeholder="name@mail.sacredheart.edu" style="width:100%"></td>
+      <td>${(a.profile||{}).invitedAt?`<span class="pill good">Sent ${md(iso(a.profile.invitedAt))}</span>`:a.email?'<span class="pill warn">Not sent</span>':'<span class="sub">—</span>'}</td>
+      <td class="r" style="white-space:nowrap"><button class="btn small" data-save="${a.id}">Save</button> <button class="btn small" data-inv="${a.id}" ${a.email?'':'disabled'}>Send invite</button></td></tr>`).join('')}
+    </tbody></table></div></div>
+    <div class="panel stack"><h2>Coaches</h2><p class="sub" style="margin:0">Coaches see the whole staff and can build programs. Add another coach's email here; they sign in the same way.</p>
+      <div class="row"><input type="email" id="staffEmail" placeholder="coach@sacredheart.edu" style="flex:1;min-width:220px"><button class="btn" id="staffAdd">Add coach</button></div></div>
+  </div>`;
+  const rowData=tr=>{const a=athlete(tr.dataset.id);const g=k=>tr.querySelector(`[data-k="${k}"]`).value.trim();
+    a.nickname=g('nickname');a.role=g('role');a.targets={...(a.targets||{}),ip:num(g('ip')),pitches:num(g('pitches'))};const em=g('email').toLowerCase();
+    if(em!==(a.email||'')){a.email=em;if(a.profile)delete a.profile.invitedAt}return a};
+  document.querySelectorAll('[data-save]').forEach(b=>b.onclick=async()=>{try{await API.saveAthlete(rowData(b.closest('tr')));toast('Saved');rosterView()}catch(e){toast(e.message)}});
+  document.querySelectorAll('[data-inv]').forEach(b=>b.onclick=async()=>{const a=rowData(b.closest('tr'));await sendInvites([a])});
+  $('#rSendAll').onclick=async()=>{document.querySelectorAll('tbody tr[data-id]').forEach(tr=>rowData(tr));const xs=S.athletes.filter(a=>a.email&&!(a.profile||{}).invitedAt);if(!xs.length){toast('No pending invites. Add emails first.');return}await sendInvites(xs)};
+  $('#rAdd').onclick=()=>{openLayer(`<h2>Add pitcher</h2><label class="f">Full name<input type="text" id="naName"></label><label class="f">Short name<input type="text" id="naNick"></label><label class="f">Email<input type="email" id="naEmail"></label><div class="row"><button class="btn primary" id="naGo">Add</button><button class="btn" id="naNo">Cancel</button></div>`);
+    $('#naNo').onclick=closeLayer;$('#naGo').onclick=async()=>{const name=$('#naName').value.trim();if(!name){toast('Enter a name');return}let id=name.toLowerCase().replace(/[^a-z]/g,'');while(athlete(id))id+='x';
+      await API.saveAthlete({id,name,nickname:$('#naNick').value.trim(),role:'',targets:{},role_note:'',email:$('#naEmail').value.trim().toLowerCase(),profile:{},archive:{}});closeLayer();toast('Added '+name);rosterView()}};
+  $('#staffAdd').onclick=async()=>{const e=$('#staffEmail').value.trim().toLowerCase();if(!e)return;try{if(S.mode==='demo'){toast('Preview mode: coach not saved');return}const {error}=await sb.from('staff').upsert([{email:e}]);if(error)throw error;toast('Coach added');$('#staffEmail').value=''}catch(err){toast(err.message)}};
+}
+async function sendInvites(list){
+  let ok=0,fail=[];
+  for(const a of list){
+    try{await API.saveAthlete(a);
+      if(S.mode!=='demo'){const {error}=await sb.auth.signInWithOtp({email:a.email,options:{shouldCreateUser:true,emailRedirectTo:location.origin+location.pathname}});if(error)throw error}
+      a.profile=a.profile||{};a.profile.invitedAt=new Date().toISOString();await API.saveAthlete(a);ok++}
+    catch(e){fail.push(`${a.nickname||a.name}: ${e.message}`)}
+  }
+  if(S.mode==='demo')toast(`Preview mode: marked ${ok} as invited, no emails sent`);
+  else if(fail.length)openLayer(`<h2>Some invites didn't send</h2><p>${ok} sent.</p><ul>${fail.map(f=>`<li>${esc(f)}</li>`).join('')}</ul><p class="sub">Supabase's built-in mailer only allows a few emails per hour. Add your own email provider under Supabase → Authentication → Emails → SMTP, then try again.</p><button class="btn" onclick="closeLayer()">Close</button>`);
+  else toast(`Invite${ok>1?'s':''} sent to ${ok} pitcher${ok>1?'s':''}`);
+  rosterView();
+}
+
+/* ============================================================ setup */
+function setupView(){
+  const T=types();
+  $('#app').innerHTML=`<div class="stack"><h1>Setup</h1>
+    <div class="grid2">
+    <div class="panel stack"><h2>Workload points</h2><p class="sub" style="margin:0">Points per day type, carried over from the sheets. Weekly load and the ratio use these.</p>
+      <div class="stack" id="wtRows">${T.map((t,i)=>`<div class="row"><span class="chip ${tcls(t.name)}" style="width:110px">${esc(t.name)}</span><input type="number" value="${t.load}" data-i="${i}" style="width:80px"><input type="text" value="${esc(t.rpe||'')}" data-r="${i}" placeholder="Effort" style="flex:1"></div>`).join('')}</div>
+      <div><button class="btn" id="wtSave">Save points</button></div></div>
+    <div class="panel stack"><h2>Season dates</h2><div class="stack" id="calRows">${calendar().map((c,i)=>`<div class="row"><input type="date" value="${c.date}" data-cd="${i}"><input type="text" value="${esc(c.label)}" data-cl="${i}" style="flex:1"></div>`).join('')}</div>
+      <div class="row"><button class="btn" id="calSave">Save dates</button></div></div>
+    </div>
+    <div class="panel stack"><h2>Import from Google Drive</h2>
+      <p class="sub prose" style="margin:0">Loads every pitcher's throwing program sheet: weekly plans, daily check-ins, program cards, warm-ups, goals, return-to-throw programs, Drive links and a full copy of each original sheet. Choose the <b>shu-seed.json</b> file. Importing again updates pitchers and adds missing days without touching anything logged in the app.</p>
+      <div class="row"><input type="file" id="seedFile" accept=".json,application/json"><button class="btn primary" id="seedGo">Import</button></div><div id="seedMsg" class="sub"></div></div>
+    <div class="panel stack"><h2>Arm care library</h2>${Object.entries(S.settings.armCare||{}).map(([k,rows])=>`<details><summary><b>${esc(k)}</b></summary><div class="tbl-wrap" style="margin-top:8px;max-height:420px"><table><tbody>${rows.map(r=>`<tr>${r.map(c=>`<td>${esc(c)}</td>`).join('')}</tr>`).join('')}</tbody></table></div></details>`).join('')||'<p class="sub">Import the Drive data to load the forearm and shoulder care tabs.</p>'}</div>
+  </div>`;
+  $('#wtSave').onclick=async()=>{const v=T.map((t,i)=>({...t,load:+document.querySelector(`[data-i="${i}"]`).value||0,rpe:document.querySelector(`[data-r="${i}"]`).value}));await API.saveSetting('workloadTypes',v);toast('Points saved')};
+  $('#calSave').onclick=async()=>{const v=calendar().map((c,i)=>({date:document.querySelector(`[data-cd="${i}"]`).value,label:document.querySelector(`[data-cl="${i}"]`).value}));await API.saveSetting('calendar',v);toast('Dates saved')};
+  $('#seedGo').onclick=async()=>{const f=$('#seedFile').files[0];if(!f){toast('Choose shu-seed.json first');return}
+    try{const seed=JSON.parse(await f.text());$('#seedMsg').textContent='Importing…';await importSeed(seed,m=>$('#seedMsg').textContent=m);}catch(e){$('#seedMsg').textContent='Import stopped: '+e.message}};
+}
+async function importSeed(seed,say){
+  const r=seedToRows(seed);
+  if(S.mode==='demo'){toast('Preview already uses this data');return}
+  say('Saving pitchers…');
+  for(const a of r.athletes){const ex=athlete(a.id);if(ex){a.email=ex.email||'';a.profile={...a.profile,...(ex.profile||{}),cards:{...(a.profile.cards||{}),...((ex.profile||{}).cards||{})}};a.role=ex.role||a.role;a.nickname=ex.nickname||a.nickname;a.targets=ex.targets&&Object.keys(ex.targets).length?ex.targets:a.targets}
+    const {error}=await sb.from('athletes').upsert([a]);if(error)throw error}
+  say('Saving fall programs…');
+  for(const p of r.programs){if(S.programs.some(x=>x.athlete_id===p.athlete_id&&x.source==='drive'))continue;const {error}=await sb.from('programs').insert([p]);if(error)throw error}
+  say('Saving check-ins…');
+  const fresh=r.logs.filter(l=>!S.logIdx[l.athlete_id+'|'+l.date]);
+  for(let i=0;i<fresh.length;i+=200){const {error}=await sb.from('logs').upsert(fresh.slice(i,i+200),{onConflict:'athlete_id,date',ignoreDuplicates:true});if(error)throw error}
+  say('Saving library…');
+  for(const [k,v] of Object.entries(r.settings)){if(k==='workloadTypes'&&S.settings.workloadTypes)continue;if(k==='calendar'&&S.settings.calendar)continue;const {error}=await sb.from('settings').upsert([{key:k,value:v}]);if(error)throw error}
+  await cloudLoad();say(`Imported ${r.athletes.length} pitchers, ${fresh.length} check-ins.`);toast('Import complete');
+}
+
+/* ============================================================ athlete side */
+function athleteToday(aid){
+  const a=athlete(aid);if(!a){$('#app').innerHTML='<div class="empty">Your roster spot wasn’t found.</div>';return}
+  const p=planDay(aid,TODAY);const prof=a.profile||{};const card=p&&p.type&&(prof.cards||{})[p.type];const t=types().find(x=>x.name===(p&&p.type));
+  const ws=monday(TODAY);const logged=logFor(aid,TODAY);
+  let strip='';for(let i=0;i<7;i++){const d=addDays(ws,i);const pp=planDay(aid,d);const l=logFor(aid,d);strip+=`<div class="d ${d===TODAY?'today':''}" data-day="${d}" data-aid="${aid}" style="min-height:70px"><span class="dn">${DAYS[i]} ${md(d)}</span>${chip((l&&l.type)||(pp&&pp.type))}${l&&l.checkin!=null?ciBadge(l.checkin):''}</div>`}
+  const next=calendar().find(c=>c.date>=TODAY);
+  $('#app').innerHTML=`<div class="stack">
+    <div class="spread"><div><div class="eyebrow">${new Date().toLocaleDateString(undefined,{weekday:'long',month:'long',day:'numeric'})}</div><h1>${esc((a.nickname||a.name.split(' ')[0]))}, here's today</h1></div>
+      ${next?`<span class="pill">${daysBetween(TODAY,next.date)} days to ${esc(next.label.toLowerCase())}</span>`:''}</div>
+    <div class="today-hero">
+      <div class="panel stack">
+        <div class="eyebrow">Today's throwing</div>
+        ${p&&p.type?`<div class="big-type" style="color:var(--t-${({'Rest':'rest','Recovery':'recovery','Hybrid B':'hybb','Hybrid A':'hyba','Bullpen':'pen','Velo':'velo','Live/Game':'live'})[p.type]||'rest'})">${esc(p.type)}</div>`:'<div class="big-type sub">No plan today</div>'}
+        <div class="kv">${t?`<div><b>${esc(t.rpe||'—')}</b><span>effort</span></div>`:''}${p&&p.intensity?`<div><b>${p.intensity}%</b><span>target effort</span></div>`:''}${p&&p.throws?`<div><b>${p.throws}</b><span>throws</span></div>`:''}${a.targets&&a.targets.ip?`<div><b>${a.targets.ip} IP</b><span>game target${a.targets.pitches?' · '+a.targets.pitches+'p':''}</span></div>`:''}</div>
+        ${p&&p.notes?`<p style="margin:0"><b>Coach:</b> ${esc(p.notes)}</p>`:''}
+        ${card?cardHtml(p.type,card,false):''}
+        ${(prof.warmup||[]).length?`<details><summary><b>Warm up / everydays</b></summary><div class="excard" style="margin-top:8px"><div class="exs">${prof.warmup.map(e=>`<div class="ex"><span class="nm">${esc(e.name)}</span><span class="dose">${esc([e.sets!=null?e.sets+'×':'',e.reps??''].join(''))}</span></div>`).join('')}</div></div>${prof.warmupNote?`<p class="sub" style="font-size:13px">${esc(prof.warmupNote)}</p>`:''}</details>`:''}
+      </div>
+      <div class="panel stack"><div class="spread"><h2>${logged?'Today’s log':'Log today'}</h2>${logged?'<span class="pill good">Logged</span>':''}</div>${logForm(aid,TODAY,'tl')}<button class="btn primary" id="tSave">${logged?'Update log':'Save log'}</button></div>
+    </div>
+    <div class="panel"><h2>This week</h2><div style="overflow-x:auto"><div class="cal" style="grid-template-columns:repeat(7,minmax(92px,1fr));min-width:680px">${strip}</div></div></div>
+    ${(prof.goals||[]).length?`<div class="panel"><h2>Your goals</h2><ul style="margin:0;padding-left:18px">${prof.goals.map(g=>`<li>${esc(g.replace(/^\d+\.\s*/,''))}</li>`).join('')}</ul></div>`:''}
+    ${(prof.rtt||[]).length?rttTab(a):''}
+  </div>`;
+  bindLogForm('tl');
+  $('#tSave').onclick=async()=>{try{await API.saveLog(readLogForm('tl',aid,TODAY));toast('Logged. Coach can see it now.');athleteToday(aid)}catch(e){toast(e.message)}};
+  document.querySelectorAll('.cal [data-day]').forEach(el=>el.onclick=()=>dayDrawer(aid,el.dataset.day));
+}
+function athleteHistory(aid){
+  const a=athlete(aid);
+  $('#app').innerHTML=`<div class="stack"><h1>My log</h1><div class="panel">${loadChart(aid)}</div>${logTab(a)}<div>${cardsTab(a,false)}</div></div>`;
+  document.querySelectorAll('[data-day]').forEach(el=>el.onclick=()=>dayDrawer(aid,el.dataset.day));
+}
+
+/* ============================================================ boot */
+async function boot(){
+  try{const t=lsGet('shuhub_theme');if(t)document.documentElement.dataset.theme=t}catch(e){}
+  $('#brand').onclick=e=>{e.preventDefault();go(S.me.role==='athlete'||S.viewAs?'today':'staff')};
+  if(window.__FORCE_DEMO__){const seed=await getSeed();Demo.start(seed);render();return}
+  if(!window.supabase){S.mode=null;render();return}
+  sb=window.supabase.createClient(CLOUD.url,CLOUD.key,{auth:{persistSession:true,detectSessionInUrl:true,flowType:'implicit'}});
+  const {data}=await sb.auth.getSession();
+  if(data.session){S.mode='cloud';
+    try{await cloudLoad()}catch(e){
+      $('#app').innerHTML=`<div class="login stack"><h1>One setup step left</h1><div class="panel stack"><p style="margin:0">Signed in as <b>${esc(data.session.user.email)}</b>, but the hub's tables aren't in the database yet.</p><p class="sub" style="margin:0">Open Supabase → SQL Editor, paste <span class="mono">supabase/setup.sql</span> from this site's repo, put your email in the last line, and run it. Then reload.</p><p class="sub mono" style="margin:0;font-size:12px">${esc(e.message||e)}</p><button class="btn" onclick="signOut()">Sign out</button></div></div>`;return}
+  }
+  sb.auth.onAuthStateChange((ev)=>{if(ev==='SIGNED_IN'&&S.mode!=='cloud')location.reload()});
+  render();
+}
+boot();
+</script>
