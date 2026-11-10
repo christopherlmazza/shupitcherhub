@@ -226,6 +226,10 @@ td.r,th.r{text-align:right}
 .vreview{border:2px solid var(--ink);border-radius:8px;padding:10px 12px;background:var(--panel)}.vlist{margin:2px 0 0;padding-left:18px}.vlist li{margin:1px 0}
 .vsum{display:flex;flex-direction:column;gap:3px;margin-top:6px;font-size:.92em}.vsum b{font:600 11px var(--f-display);letter-spacing:.1em;text-transform:uppercase;color:var(--red);display:block}.vsum span{display:block}
 details.manual>summary{cursor:pointer;color:var(--muted);font-size:13px;padding:4px 0}
+.attach{border:1px dashed var(--line);border-radius:8px;padding:10px 12px;display:flex;flex-direction:column;gap:8px}
+.attgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(96px,1fr));gap:8px}.atile{position:relative;display:flex;flex-direction:column;gap:2px;cursor:pointer;min-width:0}
+.athumb{aspect-ratio:1;border-radius:6px;background:var(--soft);display:flex;align-items:center;justify-content:center;overflow:hidden;font-size:22px;color:var(--muted);max-width:100%}.athumb img{width:100%;height:100%;object-fit:cover}
+.athumb.vid{background:var(--ink);color:#fff}.aname{font-size:11.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.adel{position:absolute;top:2px;right:2px;background:var(--panel);padding:0 6px}
 .hubframe{display:block;width:100%;height:900px;border:0;background:var(--bg)}
 .viewsw{display:flex;align-items:center;gap:6px}.viewsw span{font:600 12px var(--f-display);letter-spacing:.1em;text-transform:uppercase;opacity:.8}.viewsw select{background:transparent;color:inherit;border:1px solid currentColor;border-radius:6px;padding:4px 8px;font-size:12.5px;max-width:190px}.viewsw select option{color:#1d1a1b;background:#fff}
 .login h1{font-size:48px}
@@ -695,7 +699,7 @@ function weekCal(aid,startWs,weeks,editable){
     for(let i=0;i<7;i++){const d=addDays(ws,i);const p=planDay(aid,d);const l=logFor(aid,d);
       const shown=(l&&l.type)||(p&&p.type);
       const meta=[p&&drillCount(p.sections)?drillCount(p.sections)+(drillCount(p.sections)===1?' drill':' drills'):'',p&&p.rtt&&p.rtt.throws?p.rtt.throws+' thr · '+cellLoad(p,maxVelo(aid))+' pts':'',p&&p.throws?p.throws+' thr':'',p&&p.intensity?p.intensity+'%':'',l&&l.pitches?l.pitches+'p':'',l&&l.innings?l.innings+' IP':''].filter(Boolean).join(' · ');
-      h+=`<div class="d ${d===TODAY?'today':''} ${p&&p.filled?'filled':''}" ${p&&p.filled?`title="Filled in: ${esc(p.why||'')}"`:''} data-day="${d}" data-aid="${aid}"><span class="dn">${md(d)}</span>${shown?chip(shown,l&&l.type&&p&&p.type&&l.type!==p.type?' *':''):'<span class="sub" style="font-size:11px">—</span>'}${meta?`<span class="meta mono">${esc(meta)}</span>`:''}${l&&l.checkin!=null?ciBadge(l.checkin):''}</div>`}
+      h+=`<div class="d ${d===TODAY?'today':''} ${p&&p.filled?'filled':''}" ${p&&p.filled?`title="Filled in: ${esc(p.why||'')}"`:''} data-day="${d}" data-aid="${aid}"><span class="dn">${md(d)}</span>${shown?chip(shown,l&&l.type&&p&&p.type&&l.type!==p.type?' *':''):'<span class="sub" style="font-size:11px">—</span>'}${meta?`<span class="meta mono">${esc(meta)}</span>`:''}${l&&l.checkin!=null?ciBadge(l.checkin):''}${attCount(l)?`<span class="meta">📎 ${attCount(l)}</span>`:''}</div>`}
     const r=acwr(aid,ws);h+=`<div class="tot"><span class="num"><b>${weekLoad(aid,ws)}</b><span class="sub">/${weekLoad(aid,ws,'plan')}</span></span>${r.ratio!=null&&r.acute?`<span class="pill ${ratioCls(r.ratio)}">${r.ratio.toFixed(2)}</span>`:''}</div>`}
   return h+'</div>';
 }
@@ -709,7 +713,7 @@ function programTab(a){
 }
 function logTab(a){
   const logs=S.logs.filter(l=>l.athlete_id===a.id).sort((x,y)=>y.date.localeCompare(x.date));
-  return `<div class="panel"><div class="spread"><h2>Daily log</h2><button class="btn small" data-day="${TODAY}" data-aid="${a.id}">Add today</button></div>${logs.length?`<div class="tbl-wrap"><table><thead><tr><th>Date</th><th>Did</th><th>Check-in</th><th class="r">Throws</th><th class="r">Effort</th><th class="r">IP</th><th class="r">Pitches</th><th>Pen</th><th>Notes</th></tr></thead><tbody>${logs.map(l=>`<tr class="click" data-day="${l.date}" data-aid="${a.id}"><td class="mono">${dayName(l.date)} ${md(l.date)}</td><td>${chip(doneType(a.id,l.date))}</td><td>${ciBadge(l.checkin)}</td><td class="r num">${l.throws??''}</td><td class="r num">${l.intensity!=null?l.intensity+'%':''}</td><td class="r num">${l.innings??''}</td><td class="r num">${l.pitches??''}</td><td class="mono">${esc(l.bullpen??'')}</td><td style="min-width:240px">${esc(l.notes??'')}${l.source==='voice'?' <span class="pill" title="Spoken log">🎙</span>':''}${logSummaryHtml(l)}</td></tr>`).join('')}</tbody></table></div>`:'<div class="empty">Nothing logged yet.</div>'}</div>`;
+  return `<div class="panel"><div class="spread"><h2>Daily log</h2><button class="btn small" data-day="${TODAY}" data-aid="${a.id}">Add today</button></div>${logs.length?`<div class="tbl-wrap"><table><thead><tr><th>Date</th><th>Did</th><th>Check-in</th><th class="r">Throws</th><th class="r">Effort</th><th class="r">IP</th><th class="r">Pitches</th><th>Pen</th><th>Notes</th></tr></thead><tbody>${logs.map(l=>`<tr class="click" data-day="${l.date}" data-aid="${a.id}"><td class="mono">${dayName(l.date)} ${md(l.date)}</td><td>${chip(doneType(a.id,l.date))}</td><td>${ciBadge(l.checkin)}</td><td class="r num">${l.throws??''}</td><td class="r num">${l.intensity!=null?l.intensity+'%':''}</td><td class="r num">${l.innings??''}</td><td class="r num">${l.pitches??''}</td><td class="mono">${esc(l.bullpen??'')}</td><td style="min-width:240px">${esc(l.notes??'')}${l.source==='voice'?' <span class="pill" title="Spoken log">🎙</span>':''}${attCount(l)?` <span class="pill" title="Attachments">📎 ${attCount(l)}</span>`:''}${logSummaryHtml(l)}</td></tr>`).join('')}</tbody></table></div>`:'<div class="empty">Nothing logged yet.</div>'}</div>`;
 }
 function cardHtml(type,card,editable){
   if(!card)return '';
@@ -853,7 +857,7 @@ function lastSeen(){const a=(S.settings[seenKey()]||{}).at;const b=lsGet('shuhub
 function updatesSince(t){
   const me=(S.me.email||'').toLowerCase();const items=[];
   for(const l of S.logs){if(!l.author||l.author.toLowerCase()===me||!(String(l.updated_at||'')>t))continue;const a=athlete(l.athlete_id);if(!a)continue;
-    if(isTest(a))continue;items.push({at:l.updated_at,aid:a.id,kind:l.checkin!=null&&l.checkin>=6?'bad':l.checkin!=null&&l.checkin>=4?'warn':'',text:`${a.nickname||a.name}${l.source==='voice'?' 🎙':''} logged ${dayName(l.date)} ${md(l.date)}${l.type?' · '+l.type:''}${l.checkin!=null?' · check-in '+l.checkin+'/10':''}`,sub:l.notes||''})}
+    if(isTest(a))continue;items.push({at:l.updated_at,aid:a.id,kind:l.checkin!=null&&l.checkin>=6?'bad':l.checkin!=null&&l.checkin>=4?'warn':'',text:`${a.nickname||a.name}${l.source==='voice'?' 🎙':''}${attCount(l)?' 📎'+attCount(l):''} logged ${dayName(l.date)} ${md(l.date)}${l.type?' · '+l.type:''}${l.checkin!=null?' · check-in '+l.checkin+'/10':''}`,sub:l.notes||''})}
   for(const pg of S.programs){const a=athlete(pg.athlete_id);if(!a)continue;for(const [dt,dd] of Object.entries(pg.days||{})){if(!dd||!dd.editedBy||dd.editedBy.toLowerCase()===me||!(String(dd.editedAt||'')>t))continue;
     items.push({at:dd.editedAt,aid:a.id,kind:'',text:`${a.nickname||a.name} edited his plan for ${dayName(dt)} ${md(dt)}${dd.type?' · '+dd.type:''}`,sub:dd.dayNotes||'',tab:'program'})}}
   for(const v of S.videos){const a=athlete(v.athlete_id);if(!a||!v.author||v.author.toLowerCase()===me||!(String(v.created_at||'')>t))continue;
@@ -891,7 +895,7 @@ function dailySheet(){
       <div class="ds-meta">${[p&&(p.throws||(p.rtt&&p.rtt.throws))?`${p.throws||p.rtt.throws} throws`:'',p&&p.intensity?p.intensity+'% effort':'',p&&p.rtt&&p.rtt.velo?p.rtt.velo+' mph target':'',tg&&(tg.ip||tg.pitches)?'Target '+tgtTxt(tg):''].filter(Boolean).map(esc).join(' · ')}</div>
       ${p&&p.notes?`<div class="ds-note">${esc(p.notes)}</div>`:''}${p&&p.dayNotes?`<div class="ds-note">${esc(p.dayNotes)}</div>`:''}
       ${secs||(p?'':'<div class="ds-empty">No plan</div>')}
-      ${l?`<div class="ds-log">Logged${l.type?` · ${esc(l.type)}`:''}${l.checkin!=null?` · check-in ${l.checkin}/10`:''}${l.notes?` · ${esc(l.notes)}`:''}</div>${logSummaryHtml(l)}`:''}
+      ${l?`<div class="ds-log">Logged${l.type?` · ${esc(l.type)}`:''}${l.checkin!=null?` · check-in ${l.checkin}/10`:''}${l.notes?` · ${esc(l.notes)}`:''}${attCount(l)?` · 📎 ${attCount(l)}`:''}</div>${logSummaryHtml(l)}`:''}
     </article>`};
   $('#app').innerHTML=`<div class="stack daily">
     <div class="spread noprint"><div><h1>Daily sheet</h1><p class="sub" style="margin:4px 0 0">Every pitcher's work for one day on one page.</p></div>
@@ -975,6 +979,52 @@ const pts_=t=>pts(t);
 function logSummaryHtml(l){const sm=l&&l.summary;if(!sm||!sm.sections)return '';const SEC=[['prework','Pre-work'],['plyo','Plyo'],['throwing','Throwing'],['medball','Med ball'],['focus','Bullpen / live'],['other','Other']];
   return `<div class="vsum">${SEC.filter(([k])=>(sm.sections[k]||[]).length).map(([k,lab])=>`<div><b>${lab}</b>${sm.sections[k].map(x=>`<span>• ${esc(x)}</span>`).join('')}</div>`).join('')}${(sm.differences||[]).length?`<div><b>Vs. plan</b>${sm.differences.map(x=>`<span>• ${esc(x)}</span>`).join('')}</div>`:''}</div>`}
 
+
+/* ============================================================ log attachments (photos, videos, files on a day's log) */
+const MAXFILE=50*1024*1024;
+const fileKind=t=>/^image\//.test(t)?'image':/^video\//.test(t)?'video':'file';
+const fmtSize=n=>n>1048576?(n/1048576).toFixed(1)+' MB':Math.max(1,Math.round(n/1024))+' KB';
+function attachBlock(prefix,aid,date){
+  const l=logFor(aid,date);const list=(l&&l.attachments)||[];
+  return `<div class="attach" id="${prefix}att"><div class="spread"><b>Photos, videos & files</b><label class="btn small" for="${prefix}file">＋ Add</label></div>
+    <input type="file" id="${prefix}file" multiple accept="image/*,video/*,application/pdf,.pdf,.csv,.xlsx,.xls,.doc,.docx,.txt" hidden>
+    <span class="sub" id="${prefix}amsg" style="font-size:12.5px" role="status">${list.length?'':'Up to 50 MB each. Saved with this day’s log.'}</span>
+    <div class="attgrid" id="${prefix}agrid">${list.map((x,i)=>attTile(x,i,aid,date)).join('')}</div></div>`;
+}
+function attTile(x,i,aid,date){const k=fileKind(x.type||'');const mine=S.me.role==='coach'||(S.me.athleteId===aid);
+  return `<div class="atile" data-apath="${esc(x.path)}" data-akind="${k}">${k==='image'?'<div class="athumb">…</div>':k==='video'?'<div class="athumb vid">▶</div>':'<div class="athumb doc">📄</div>'}
+    <span class="aname" title="${esc(x.name)}">${esc(x.name)}</span><span class="sub" style="font-size:11px">${fmtSize(x.size||0)}</span>
+    ${mine?`<button type="button" class="btn small ghost adel" data-adel="${i}" data-aid="${aid}" data-adate="${date}" aria-label="Remove ${esc(x.name)}">✕</button>`:''}</div>`}
+async function hydrateAttachments(root){
+  for(const t of (root||document).querySelectorAll('.atile[data-apath]')){if(t.dataset.done)continue;t.dataset.done='1';
+    const src=await videoSrc({path:t.dataset.apath});const th=t.querySelector('.athumb');if(!src){th.textContent='—';continue}
+    if(t.dataset.akind==='image')th.innerHTML=`<img src="${esc(src)}" alt="">`;
+    t.onclick=e=>{if(e.target.closest('.adel'))return;openLayer(`<div class="spread"><b>${esc(t.querySelector('.aname').textContent)}</b><button class="btn small ghost" onclick="closeLayer()">Close</button></div>
+      ${t.dataset.akind==='image'?`<img src="${esc(src)}" alt="" style="width:100%;border-radius:8px">`:t.dataset.akind==='video'?`<video src="${esc(src)}" controls playsinline style="width:100%;border-radius:8px;background:#000"></video>`:`<a class="btn primary" href="${esc(src)}" target="_blank" rel="noopener">Open file ↗</a>`}`)}}
+}
+function bindAttach(prefix,aid,date,after){
+  const inp=$('#'+prefix+'file');if(!inp)return;hydrateAttachments($('#'+prefix+'att'));
+  inp.onchange=async()=>{const files=[...inp.files];inp.value='';if(!files.length)return;const msg=$('#'+prefix+'amsg');
+    if(S.mode!=='cloud'){msg.textContent='Uploads work on the live site, not the preview.';return}
+    const ok=[],bad=[];
+    for(const [i,f] of files.entries()){if(f.size>MAXFILE){bad.push(`${f.name} is over 50 MB`);continue}
+      msg.textContent=`Uploading ${i+1} of ${files.length}…`;
+      const path=`${aid}/logs/${date}/${Date.now()}-${f.name.replace(/[^\w.-]+/g,'_')}`;
+      const {error}=await sb.storage.from('videos').upload(path,f,{contentType:f.type||'application/octet-stream'});
+      if(error)bad.push(`${f.name}: ${error.message}`);else ok.push({path,name:f.name,type:f.type||'',size:f.size,at:new Date().toISOString(),by:S.me.email})}
+    if(ok.length){const ex=logFor(aid,date);const list=[...((ex&&ex.attachments)||[]),...ok];
+      try{await API.saveLog({athlete_id:aid,date,attachments:list})}catch(e){bad.push(e.message)}}
+    msg.textContent=bad.length?bad.join(' · '):`Added ${ok.length} file${ok.length===1?'':'s'}.`;
+    if(ok.length){const g=$('#'+prefix+'agrid');if(g){g.innerHTML=(logFor(aid,date).attachments||[]).map((x,i)=>attTile(x,i,aid,date)).join('');bindAttDel(prefix,aid,date,after);hydrateAttachments(g)}}
+  };
+  bindAttDel(prefix,aid,date,after);
+}
+function bindAttDel(prefix,aid,date,after){
+  document.querySelectorAll(`#${prefix}agrid [data-adel]`).forEach(b=>b.onclick=e=>{e.stopPropagation();const ex=logFor(aid,date);const x=ex.attachments[+b.dataset.adel];
+    confirmBox(`Remove ${x.name}? This deletes the file.`,'Remove',async()=>{try{await sb.storage.from('videos').remove([x.path]);await API.saveLog({athlete_id:aid,date,attachments:ex.attachments.filter(y=>y.path!==x.path)});toast('Removed');after&&after()}catch(err){toast(err.message)}})});
+}
+const attCount=l=>((l&&l.attachments)||[]).length;
+
 /* ============================================================ drawers */
 function closeLayer(){$('#layer').innerHTML=''}
 function openLayer(html){$('#layer').innerHTML=`<div class="scrim" id="scrim"></div><aside class="drawer" role="dialog" aria-modal="true">${html}</aside>`;$('#scrim').onclick=closeLayer}
@@ -1018,9 +1068,9 @@ function dayDrawer(aid,date){
     ${p?sectionsHtml(p):''}
     <button class="btn small" id="dEditDay">${p?'Edit this day’s plan':'Add a plan for this day'}</button>${p&&p.editedBy?`<span class="sub" style="font-size:12px">Edited by ${esc(p.editedBy===a.email?(a.nickname||a.name):'coach')} ${new Date(p.editedAt).toLocaleDateString()}</span>`:''}
     ${p&&p.rtt?rttDetailHtml(p,aid)+(S.me.role==='coach'&&!S.viewAs?rttInputs(p,aid):''):''}
-    <h3>Log</h3>${logFor(aid,date)&&logFor(aid,date).summary?logSummaryHtml(logFor(aid,date)):''}${voiceBlock('dl')}<details class="manual"><summary>Or fill it in by hand</summary>${logForm(aid,date,'dl')}</details>
+    <h3>Log</h3>${logFor(aid,date)&&logFor(aid,date).summary?logSummaryHtml(logFor(aid,date)):''}${voiceBlock('dl')}${attachBlock('dl',aid,date)}<details class="manual"><summary>Or fill it in by hand</summary>${logForm(aid,date,'dl')}</details>
     <div class="row"><button class="btn primary" id="dSave">Save log</button></div>`);
-  bindLogForm('dl');$('#dClose').onclick=closeLayer;bindVoice('dl',aid,date,()=>{closeLayer();render()});
+  bindLogForm('dl');$('#dClose').onclick=closeLayer;bindVoice('dl',aid,date,()=>{closeLayer();render()});bindAttach('dl',aid,date,()=>dayDrawer(aid,date));
   const ed=$('#dEditDay');if(ed)ed.onclick=()=>dayEditor(`${a.nickname||a.name} · ${dayName(date)} ${md(date)}`,p?{...p,program:undefined}:{},async(day)=>{await editDayPlan(aid,date,day);render()});
   if(p&&p.rtt&&$('#rSave')){const read=()=>({...p.rtt,throws:num($('#rT').value)||0,dist:num($('#rD').value)||60,intentThrows:num($('#rI').value)||0,velo:num($('#rV').value)});
     ['rT','rD','rI','rV'].forEach(id=>$('#'+id).oninput=()=>$('#rLoad').textContent=rttLoad(read(),maxVelo(aid))+' pts');
@@ -1428,13 +1478,13 @@ function athleteToday(aid){
         ${p?sectionsHtml(p):''}
         ${p&&p.rtt?rttDetailHtml(p,aid):''}
       </div>
-      <div class="panel stack"><div class="spread"><h2>${logged?'Today’s log':'Log today'}</h2>${logged?'<span class="pill good">Logged</span>':''}</div>${voiceBlock('tl')}${logged&&logged.summary?logSummaryHtml(logged):''}<details class="manual"${logged&&!logged.summary?' open':''}><summary>Or fill it in by hand</summary>${logForm(aid,TODAY,'tl')}</details><button class="btn primary" id="tSave">${logged?'Update log':'Save log'}</button></div>
+      <div class="panel stack"><div class="spread"><h2>${logged?'Today’s log':'Log today'}</h2>${logged?'<span class="pill good">Logged</span>':''}</div>${voiceBlock('tl')}${logged&&logged.summary?logSummaryHtml(logged):''}${attachBlock('tl',aid,TODAY)}<details class="manual"${logged&&!logged.summary?' open':''}><summary>Or fill it in by hand</summary>${logForm(aid,TODAY,'tl')}</details><button class="btn primary" id="tSave">${logged?'Update log':'Save log'}</button></div>
     </div>
     <div class="panel"><h2>This week</h2><div style="overflow-x:auto"><div class="cal" style="grid-template-columns:repeat(7,minmax(92px,1fr));min-width:680px">${strip}</div></div></div>
     ${targetCard(a,false)}
     
   </div>`;
-  bindLogForm('tl');bindVoice('tl',aid,TODAY,()=>athleteToday(aid));
+  bindLogForm('tl');bindVoice('tl',aid,TODAY,()=>athleteToday(aid));bindAttach('tl',aid,TODAY,()=>athleteToday(aid));
   $('#tEdit').onclick=()=>dayEditor(`${dayName(TODAY)} ${md(TODAY)}`,p?{...p,program:undefined}:{},async(day)=>{await editDayPlan(aid,TODAY,day);athleteToday(aid)});
   $('#tSave').onclick=async()=>{try{await API.saveLog(readLogForm('tl',aid,TODAY));toast('Logged. Coach can see it now.');athleteToday(aid)}catch(e){toast(e.message)}};
   document.querySelectorAll('.cal [data-day]').forEach(el=>el.onclick=()=>dayDrawer(aid,el.dataset.day));

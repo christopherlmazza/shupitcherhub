@@ -2782,13 +2782,14 @@ if(EMB.get('embed')){
     let hit=matchPitcher(nm);if(!hit){const xs=DB.roster.filter(r=>normName(r.name.split(/\s+/).pop())===last);if(xs.length===1)hit=xs[0];}return hit?hit.id:null;};
   const one=(id,pid)=>{const el=document.getElementById(id);if(!el)return;if(![...el.options].some(o=>o.value===pid))el.innerHTML=`<option value="${pid}"></option>`;el.value=pid;};
   window.embedPid=lockPid;
-  window.embedApply=()=>{const pid=lockPid();const v=EMB.get('v');
+  window.EMBVIEW=EMB.get('v')||'';
+  window.embedApply=()=>{const pid=lockPid();const v=window.EMBVIEW;
     if(EMB.get('p')&&!pid){document.querySelectorAll('.view').forEach(x=>x.classList.remove('active'));let m=document.getElementById('embedNone');if(!m){m=document.createElement('div');m.id='embedNone';m.className='card empty';m.style.margin='16px';m.textContent='No TrackMan or charted outings for this pitcher yet.';document.body.appendChild(m);}return;}
     if(pid){RP_PID=pid;['rpPitcher','trPitcher','cmPitcher','amPitcher'].forEach(id=>one(id,pid));if(typeof AIM!=='undefined')AIM.pid=pid;}
-    if(v){const b=document.querySelector(`nav button[data-v="${v}"]`);if(b)b.click();}};
-  const _rr=rerenderActive;rerenderActive=function(){_rr();if(EMB.get('p'))embedApply();};
+    if(v){const b=document.querySelector(`nav button[data-v="${v}"]`);const view=document.getElementById('v-'+v);if(b&&!(view&&view.classList.contains('active'))&&!window.__embClicking){window.__embClicking=true;try{b.click()}finally{window.__embClicking=false}}}};
+  const _rr=rerenderActive;rerenderActive=function(){_rr();if(EMB.get('p')&&!window.__embClicking)embedApply();};
   let lastH=0;setInterval(()=>{const h=Math.max(document.body.scrollHeight,document.documentElement.scrollHeight);if(Math.abs(h-lastH)>4){lastH=h;parent.postMessage({hubHeight:h,hubFor:EMB.get('p')||''},location.origin);}},400);
-  window.addEventListener('message',e=>{if(e.origin===location.origin&&e.data&&e.data.hubView){const b=document.querySelector(`nav button[data-v="${e.data.hubView}"]`);if(b)b.click();if(EMB.get('p'))embedApply();}});
+  window.addEventListener('message',e=>{if(e.origin===location.origin&&e.data&&e.data.hubView){window.EMBVIEW=e.data.hubView;const b=document.querySelector(`nav button[data-v="${e.data.hubView}"]`);if(b){window.__embClicking=true;try{b.click()}finally{window.__embClicking=false}}if(EMB.get('p'))embedApply();}});
 }
 if(EMB.get('embed')){embedApply();setTimeout(()=>embedApply(),1800);}
 </script>
