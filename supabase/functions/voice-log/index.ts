@@ -22,7 +22,7 @@ Deno.serve(async (req) => {
     if (!key) return json({ error: "Voice logging isn't switched on yet: Coach needs to add the Anthropic API key in Supabase." }, 503);
 
     // Only signed-in people who can see this pitcher (the pitcher himself or a coach) may use it.
-    const sb = createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_ANON_KEY")!, {
+    const sb = createClient(Deno.env.get("SUPABASE_URL")!, (Deno.env.get("SUPABASE_ANON_KEY") || Deno.env.get("SUPABASE_PUBLISHABLE_KEY"))!, {
       global: { headers: { Authorization: req.headers.get("Authorization") ?? "" } },
     });
     const { data: who } = await sb.auth.getUser();
