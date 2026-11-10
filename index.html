@@ -520,7 +520,8 @@ function bindLogin(){
       if(LOGINMODE==='signup'){const pw=$('#loginPw').value,pw2=$('#loginPw2').value;
         if(pw.length<8)throw new Error('Use at least 8 characters.');if(pw!==pw2)throw new Error('The two passwords don’t match.');
         const {data,error}=await sb.auth.signUp({email,password:pw,options:{emailRedirectTo:SITE_URL(),data:{pw_set:true}}});if(error)throw error;
-        if(data.user&&Array.isArray(data.user.identities)&&!data.user.identities.length){msg.textContent='That email already has an account. Use “Forgot password?” to set or reset your password.';return}
+        if(data.user&&Array.isArray(data.user.identities)&&!data.user.identities.length){const {error:re}=await sb.auth.resetPasswordForEmail(email,{redirectTo:SITE_URL()});
+          msg.textContent=re?'You already have an account (Coach’s invite created it). Open the invite email to set your password, or tap “Forgot password?”.':`You already have an account. Coach's invite created it. We just emailed ${email} a link to set your password. Open it on this device.`;return}
         if(data.session){location.reload();return}
         msg.textContent=`Almost done: we sent a confirmation link to ${email}. Open it once, and after that you'll sign in with your password.`;return}
       if(LOGINMODE==='reset'){const {error}=await sb.auth.resetPasswordForEmail(email,{redirectTo:SITE_URL()});if(error)throw error;
