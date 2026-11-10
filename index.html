@@ -403,7 +403,8 @@ function rttToDays(rtt,startMonday,maxV){
     days[date]=r?{type:RTT,rtt:r,load:rttLoad(r,maxV),notes:`${w.label}`}:{type:'Rest',notes:`${w.label}${e.length?': '+e.map(x=>x.text).join(', '):''}`}}));
   return days;
 }
-function planDay(aid,date){let best=null;for(const p of S.programs){if(p.athlete_id!==aid||!p.days||!p.days[date])continue;if(!best||String(p.created_at||'')>String(best.created_at||''))best=p}return best?{...best.days[date],program:best}:null}
+/* The newest program whose date range covers the day decides that day, even if it leaves the day blank, so an old block never bleeds into a new one. */
+function planDay(aid,date){let best=null;for(const p of S.programs){if(p.athlete_id!==aid||!p.days)continue;const inRange=p.start_date&&p.end_date?(date>=p.start_date&&date<=p.end_date):!!p.days[date];if(!inRange)continue;if(!best||String(p.created_at||'')>String(best.created_at||''))best=p}return best&&best.days[date]?{...best.days[date],program:best}:null}
 function logFor(aid,date){return S.logIdx[aid+'|'+date]||null}
 function doneType(aid,date){const l=logFor(aid,date);if(l&&l.type)return l.type;const p=planDay(aid,date);return p?p.type:null}
 function planLoad(aid,date){const p=planDay(aid,date);return p?cellLoad(p,maxVelo(aid)):0}
@@ -837,7 +838,6 @@ function dayDrawer(aid,date){
     <div class="panel"><div class="eyebrow">Planned</div><div class="row" style="margin-top:6px">${chip(p&&p.type)}${p&&p.throws?`<span class="mono">${p.throws} throws</span>`:''}${p&&p.intensity?`<span class="mono">${p.intensity}%</span>`:''}</div>${p&&p.notes?`<p style="margin:8px 0 0">${esc(p.notes)}</p>`:''}${p?`<p class="sub" style="font-size:12px;margin:6px 0 0">${esc(p.program.title)}</p>`:''}</div>
     ${p?sectionsHtml(p):''}
     ${p&&S.me.role==='coach'&&!S.viewAs?'<button class="btn small" id="dEditDay">Edit drills & notes for this day</button>':''}
-    ${card&&!drillCount(p.sections)?cardHtml(p.type,card,false):''}
     ${p&&p.rtt?rttDetailHtml(p,aid)+(S.me.role==='coach'&&!S.viewAs?rttInputs(p,aid):''):''}
     <h3>Log</h3>${logForm(aid,date,'dl')}
     <div class="row"><button class="btn primary" id="dSave">Save log</button></div>`);
@@ -954,10 +954,11 @@ async function learnDrills(sections){
   return added;
 }
 let CLIP=null; /* {kind:'section'|'day', sec, label, items, notes, from} */
+const hasSecContent=sec=>!!sec&&SECTIONS.some(([k])=>(sec[k]||[]).some(d=>d.name)||(sec[k+'Notes']||'').trim());
 const drillCount=sec=>sec?SECTIONS.reduce((n,[k])=>n+((sec[k]||[]).filter(d=>d.name).length),0):0;
 function sectionsHtml(day){
   const sec=day&&day.sections;if(!sec&&!(day&&day.dayNotes))return '';
-  return `${day.dayNotes?`<div class="daynote"><b>Coach notes</b><p>${esc(day.dayNotes)}</p></div>`:''}${SECTIONS.filter(([k])=>sec&&(sec[k]||[]).some(d=>d.name)||(sec&&sec[k+'Notes'])).map(([k,l])=>`<div class="excard"><header><b class="sec-h">${l}</b>${sec[k+'Notes']?`<span class="sub" style="font-size:12.5px">${esc(sec[k+'Notes'])}</span>`:''}</header><div class="exs">${(sec[k]||[]).filter(d=>d.name).map(e=>`<div class="ex"><span class="nm">${esc(e.name)}</span><span class="dose">${esc([e.sets?e.sets+'×':'',e.reps||'',e.ball?' · '+e.ball:''].join(''))}</span>${e.notes?`<span class="nt">${esc(e.notes)}</span>`:''}</div>`).join('')}</div></div>`).join('')}`;
+  return `${day.dayNotes?`<div class="daynote"><b>Coach notes</b><p>${esc(day.dayNotes)}</p></div>`:''}${SECTIONS.filter(([k])=>sec&&(sec[k]||[]).some(d=>d.name)||(sec&&sec[k+'Notes'])).map(([k,l])=>`<div class="excard"><header><b class="sec-h">${l}</b>${sec[k+'Notes']&&(sec[k]||[]).some(d=>d.name)?`<span class="sub" style="font-size:12.5px">${esc(sec[k+'Notes'])}</span>`:''}</header><div class="exs">${sec[k+'Notes']&&!(sec[k]||[]).some(d=>d.name)?`<p style="margin:8px 0;white-space:pre-wrap">${esc(sec[k+'Notes'])}</p>`:''}${(sec[k]||[]).filter(d=>d.name).map(e=>`<div class="ex"><span class="nm">${esc(e.name)}</span><span class="dose">${esc([e.sets?e.sets+'×':'',e.reps||'',e.ball?' · '+e.ball:''].join(''))}</span>${e.notes?`<span class="nt">${esc(e.notes)}</span>`:''}</div>`).join('')}</div></div>`).join('')}`;
 }
 /* Day editor: drills by section, notes per drill, notes per section, overall day notes. onSave(day) persists it. */
 function dayEditor(title,day,onSave,extraBtns){
@@ -1056,7 +1057,7 @@ function drawBuilderGrid(){
         <select data-k="${k}" data-i="${i}" data-f="type" aria-label="Type ${md(d)}"><option value="">—</option>${T.map(t=>`<option ${c.type===t.name?'selected':''}>${esc(t.name)}</option>`).join('')}</select>
         <div class="mini"><input type="number" min="0" placeholder="thr" value="${(c.rtt?c.rtt.throws:c.throws)??''}" data-k="${k}" data-i="${i}" data-f="throws" aria-label="Throws"><input type="number" min="0" max="100" placeholder="%" value="${c.intensity??''}" data-k="${k}" data-i="${i}" data-f="intensity" aria-label="Effort percent"></div>
         <input type="text" placeholder="note" value="${esc(c.notes||'')}" data-k="${k}" data-i="${i}" data-f="notes" style="padding:3px 5px;font-size:12px" aria-label="Note">
-        <button class="btn small ${drillCount(c.sections)||c.dayNotes?'':'ghost'}" data-dayed="${k}|${i}" style="justify-content:center;padding:3px 6px;font-size:12px">${drillCount(c.sections)?drillCount(c.sections)+(drillCount(c.sections)===1?' drill':' drills'):(c.dayNotes?'Notes':'+ Drills & notes')}</button></div>`});
+        <button class="btn small ${drillCount(c.sections)||c.dayNotes||hasSecContent(c.sections)?'':'ghost'}" data-dayed="${k}|${i}" data-has="${drillCount(c.sections)||c.dayNotes||hasSecContent(c.sections)?1:0}" style="justify-content:center;padding:3px 6px;font-size:12px">${drillCount(c.sections)?drillCount(c.sections)+(drillCount(c.sections)===1?' drill':' drills'):(c.dayNotes||hasSecContent(c.sections)?'Notes added':'+ Drills & notes')}</button></div>`});
     const mv=first?maxVelo(first):null;const load=Math.round(w.reduce((s,c)=>s+cellLoad(c,mv),0)*10)/10;const thr=w.reduce((s,c)=>s+(+c.throws||0),0);
     let ratio='';if(first){const hist=[];for(let j=3;j>=1;j--){const pw=addDays(ws,-7*j);const kk=k-j;hist.push(kk>=0?BUILD.grid[kk].reduce((s,c)=>s+cellLoad(c,mv),0):weekLoad(first,pw))}
       const f=firstWeek(first);const arr=[...hist,load];const chronic=arr.reduce((a,b)=>a+b,0)/arr.length;const r=chronic?Math.round(load/chronic*100)/100:null;if(r!=null&&load)ratio=`<span class="pill ${ratioCls(r)}">${r.toFixed(2)}</span>`}
@@ -1089,12 +1090,14 @@ async function saveTemplateFromBuilder(){
 async function saveBuild(){
   const ids=[...BUILD.athletes];if(!ids.length){toast('Pick at least one pitcher');return}
   const title=BUILD.title.trim()||`Program from ${md(BUILD.start)}`;
-  const days={};BUILD.grid.forEach((w,k)=>w.forEach((c,i)=>{if(!c.type&&!c.notes&&!drillCount(c.sections)&&!c.dayNotes)return;const o={type:c.type||null};if(c.throws!=null)o.throws=c.throws;if(c.intensity!=null)o.intensity=c.intensity;if(c.notes)o.notes=c.notes;if(c.rtt)o.rtt=c.rtt;if(drillCount(c.sections))o.sections=c.sections;if(c.dayNotes)o.dayNotes=c.dayNotes;days[addDays(BUILD.start,7*k+i)]=o}));
+  const days={};BUILD.grid.forEach((w,k)=>w.forEach((c,i)=>{if(!c.type&&!c.notes&&!hasSecContent(c.sections)&&!c.dayNotes)return;const o={type:c.type||null};if(c.throws!=null)o.throws=c.throws;if(c.intensity!=null)o.intensity=c.intensity;if(c.notes)o.notes=c.notes;if(c.rtt)o.rtt=c.rtt;if(hasSecContent(c.sections))o.sections=c.sections;if(c.dayNotes)o.dayNotes=c.dayNotes;days[addDays(BUILD.start,7*k+i)]=o}));
   if(!Object.keys(days).length){toast('Fill in at least one day');return}
   const end=addDays(BUILD.start,7*BUILD.weeks-1);
   try{
     if(BUILD.editing){const p=S.programs.find(x=>x.id===BUILD.editing);Object.assign(p,{title,start_date:BUILD.start,end_date:end,days:JSON.parse(JSON.stringify(days))});await API.saveProgram(p)}
-    else for(const aid of ids)await API.saveProgram({id:uid(),athlete_id:aid,title,start_date:BUILD.start,end_date:end,days:JSON.parse(JSON.stringify(days)),source:'app',created_at:new Date().toISOString()});
+    else for(const aid of ids){const ex=S.programs.find(p=>p.athlete_id===aid&&p.source==='app'&&p.title===title&&p.start_date===BUILD.start);
+      if(ex){Object.assign(ex,{end_date:end,days:JSON.parse(JSON.stringify(days)),created_at:new Date().toISOString()});await API.saveProgram(ex)}
+      else await API.saveProgram({id:uid(),athlete_id:aid,title,start_date:BUILD.start,end_date:end,days:JSON.parse(JSON.stringify(days)),source:'app',created_at:new Date().toISOString()})}
     toast(BUILD.editing?'Program updated':`Assigned to ${ids.length} pitcher${ids.length>1?'s':''}`);
     const back=ids.length===1?'p-'+ids[0]:'staff';Object.assign(BUILD,{grid:null,editing:null,title:''});BUILD.athletes=new Set();go(back);
   }catch(e){toast(e.message)}
@@ -1207,7 +1210,6 @@ function athleteToday(aid){
         <div class="kv">${t?`<div><b>${esc(t.rpe||'—')}</b><span>effort</span></div>`:''}${p&&p.intensity?`<div><b>${p.intensity}%</b><span>target effort</span></div>`:''}${p&&p.throws?`<div><b>${p.throws}</b><span>throws</span></div>`:''}${p&&p.rtt&&p.rtt.throws?`<div><b>${p.rtt.throws}</b><span>throws</span></div>`:''}${p&&p.rtt&&p.rtt.velo?`<div><b>${p.rtt.velo}</b><span>mph target${p.rtt.intentThrows&&p.rtt.intentThrows<p.rtt.throws?' · '+p.rtt.intentThrows+' throws':''}</span></div>`:''}${(()=>{const t=targetNow(a);const x=t.cur||t.final;return x&&(x.ip||x.pitches)?`<div><b>${tgtTxt(x)}</b><span>${t.cur?'current game target':'game target'}</span></div>`:''})()}</div>
         ${p&&p.notes?`<p style="margin:0"><b>Coach:</b> ${esc(p.notes)}</p>`:''}
         ${p?sectionsHtml(p):''}
-        ${card&&!drillCount(p.sections)?cardHtml(p.type,card,false):''}
         ${p&&p.rtt?rttDetailHtml(p,aid):''}
         ${(prof.warmup||[]).length?`<details><summary><b>Warm up / everydays</b></summary><div class="excard" style="margin-top:8px"><div class="exs">${prof.warmup.map(e=>`<div class="ex"><span class="nm">${esc(e.name)}</span><span class="dose">${esc([e.sets!=null?e.sets+'×':'',e.reps??''].join(''))}</span></div>`).join('')}</div></div>${prof.warmupNote?`<p class="sub" style="font-size:13px">${esc(prof.warmupNote)}</p>`:''}</details>`:''}
       </div>
