@@ -222,6 +222,7 @@ td.r,th.r{text-align:right}
 .voice{border:1px solid var(--line);border-radius:8px;padding:10px 12px;display:flex;flex-direction:column;gap:8px;background:var(--soft)}
 .voice textarea{min-height:76px}.mic.rec{background:var(--bad);border-color:var(--bad);color:#fff;animation:pulse 1.2s infinite}
 @keyframes pulse{50%{opacity:.6}}@media (prefers-reduced-motion:reduce){.mic.rec{animation:none}}
+.vtype{border-top:1px solid var(--line);padding-top:8px}
 .vreview{border:2px solid var(--ink);border-radius:8px;padding:10px 12px;background:var(--panel)}.vlist{margin:2px 0 0;padding-left:18px}.vlist li{margin:1px 0}
 .vsum{display:flex;flex-direction:column;gap:3px;margin-top:6px;font-size:.92em}.vsum b{font:600 11px var(--f-display);letter-spacing:.1em;text-transform:uppercase;color:var(--red);display:block}.vsum span{display:block}
 details.manual>summary{cursor:pointer;color:var(--muted);font-size:13px;padding:4px 0}
@@ -949,20 +950,24 @@ function showVoiceReview(prefix,aid,date,d,transcript,ex,after){
   const SEC=[['prework','Pre-work'],['plyo','Plyo'],['throwing','Throwing'],['medball','Med ball'],['focus','Bullpen / live'],['other','Other']];
   const ciPicked=$('#'+prefix+'ci .on');const ci=d.checkin!=null?d.checkin:(ciPicked?+ciPicked.dataset.v:null);
   const nums=[d.throws!=null?`${d.throws} throws`:'',d.intensity!=null?`${d.intensity}% effort`:'',d.pitches!=null?`${d.pitches} pitches`:'',d.innings!=null?`${d.innings} IP`:'',ci!=null?`check-in ${ci}/10`:''].filter(Boolean).join(' · ');
-  const pts=d.day_type?(d.day_type===RTT?genericRttLoad({throws:d.throws,intensity:d.intensity}):pts_(d.day_type)):0;
+  let picked=null;const ptsFor=t=>t?(t===RTT?genericRttLoad({throws:d.throws,intensity:d.intensity}):pts_(t)):0;
   $('#'+prefix+'review').innerHTML=`<div class="vreview stack">
-    <div class="spread"><div class="row" style="gap:8px">${chip(d.day_type)}<span class="mono" style="font-size:12.5px">${pts} pts</span></div><span class="sub mono" style="font-size:12px">${esc(nums)}</span></div>
+    <div class="spread"><b>Your day</b><span class="sub mono" style="font-size:12px">${esc(nums)}</span></div>
     ${SEC.filter(([k])=>(d.sections[k]||[]).length).map(([k,l])=>`<div><div class="sec-h" style="color:var(--red)">${l}</div><ul class="vlist">${d.sections[k].map(x=>`<li>${esc(x)}</li>`).join('')}</ul></div>`).join('')||'<p class="sub" style="margin:0">No specific drills picked up.</p>'}
     ${d.bullpen?`<div><div class="sec-h">Bullpen</div><p style="margin:2px 0 0">${esc(d.bullpen)}</p></div>`:''}
     ${d.notes?`<div class="daynote"><b>Summary</b><p>${esc(d.notes)}</p></div>`:''}
     ${(d.differences||[]).length?`<div><div class="sec-h">Different from the plan</div><ul class="vlist">${d.differences.map(x=>`<li>${esc(x)}</li>`).join('')}</ul></div>`:''}
     ${(d.unclear||[]).length?`<div><div class="sec-h" style="color:var(--warn)">Not sure about</div><ul class="vlist">${d.unclear.map(x=>`<li>${esc(x)}</li>`).join('')}</ul></div>`:''}
+    <div class="vtype"><div class="sec-h">What type of day was it?</div><div class="typepick" id="${prefix}vtype" style="margin-top:6px">${types().map(t=>`<button type="button" class="chip ${tcls(t.name)}" data-v="${esc(t.name)}">${esc(t.name)}</button>`).join('')}</div><span class="sub mono" id="${prefix}vpts" style="font-size:12px">Tap one to finish</span></div>
     ${ex?`<p class="sub" style="margin:0;font-size:12.5px">Saving replaces what you logged earlier for ${md(date)}${ex.type?` (${esc(ex.type)})`:''}.</p>`:''}
-    <div class="row"><button type="button" class="btn primary" id="${prefix}vsave">Save this as my log</button><button type="button" class="btn ghost" id="${prefix}vno">Discard</button></div></div>`;
+    <div class="row"><button type="button" class="btn primary" id="${prefix}vsave" disabled>Save this as my log</button><button type="button" class="btn ghost" id="${prefix}vno">Discard</button></div></div>`;
   $('#'+prefix+'vno').onclick=()=>{$('#'+prefix+'review').innerHTML=''};
+  document.querySelectorAll(`#${prefix}vtype button`).forEach(b=>b.onclick=()=>{picked=b.dataset.v;document.querySelectorAll(`#${prefix}vtype button`).forEach(x=>x.classList.toggle('on',x===b));
+    $('#'+prefix+'vpts').textContent=`${picked} · ${ptsFor(picked)} workload pts`;$('#'+prefix+'vsave').disabled=false});
   $('#'+prefix+'vsave').onclick=async()=>{
     const sections=Object.fromEntries(SEC.map(([k])=>[k,d.sections[k]||[]]));
-    const log={athlete_id:aid,date,type:d.day_type||null,checkin:ci,throws:d.throws??null,intensity:d.intensity??null,innings:d.innings??null,pitches:d.pitches??null,bullpen:d.bullpen||null,
+    if(!picked){toast('Pick your day type first');return}
+    const log={athlete_id:aid,date,type:picked,checkin:ci,throws:d.throws??null,intensity:d.intensity??null,innings:d.innings??null,pitches:d.pitches??null,bullpen:d.bullpen||null,
       notes:d.notes||null,transcript,summary:{sections,differences:d.differences||[],unclear:d.unclear||[],source:'voice',at:new Date().toISOString()},source:'voice'};
     try{await API.saveLog(log);toast('Logged. Coach can see it now.');after&&after()}catch(e){toast(e.message)}};
 }
