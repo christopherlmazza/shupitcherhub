@@ -483,23 +483,23 @@ function render(){
 /* ============================================================ login */
 let LOGINMODE='signin';
 const SITE_URL=()=>location.origin+location.pathname;
+const INVITE_EMAIL=(()=>{try{return new URLSearchParams(location.search).get('invite')||''}catch(e){return ''}})();
 function loginView(){
-  const m=LOGINMODE;
-  const title={signin:'Sign in',signup:'Create your account',reset:'Reset your password'}[m];
+  const m=LOGINMODE;const inv=INVITE_EMAIL&&m==='signin';
+  const em=INVITE_EMAIL||lsGet('shuhub_lastEmail')||'';
   return `<div class="login stack">
     <div class="eyebrow">Sacred Heart Pitching</div>
     <h1>SHU<span style="color:var(--red)">pitcher</span>hub</h1>
-    <p class="sub">Throwing programs, daily check-ins and workload for the staff.</p>
+    <p class="sub">${inv?'You’re invited. Enter the team password Coach gave you to get in.':'Throwing programs, daily check-ins and workload for the staff.'}</p>
     <form class="panel stack" id="loginForm" novalidate>
-      <h2>${title}</h2>
-      <label class="f">Email<input type="email" id="loginEmail" required placeholder="you@mail.sacredheart.edu" autocomplete="email" value="${esc(lsGet('shuhub_lastEmail')||'')}"></label>
-      ${m!=='reset'?`<label class="f">Password<input type="password" id="loginPw" required minlength="8" autocomplete="${m==='signup'?'new-password':'current-password'}"></label>`:''}
-      ${m==='signup'?`<label class="f">Confirm password<input type="password" id="loginPw2" required minlength="8" autocomplete="new-password"></label><p class="sub" style="margin:0;font-size:12.5px">At least 8 characters. Use the email Coach has on the roster.</p>`:''}
-      ${m==='reset'?`<p class="sub" style="margin:0;font-size:13px">We'll email you a link to set a new password.</p>`:''}
-      <button class="btn primary" type="submit" id="loginBtn">${{signin:'Sign in',signup:'Create account',reset:'Email me a reset link'}[m]}</button>
+      <h2>${m==='reset'?'Reset your password':inv?'Welcome':'Sign in'}</h2>
+      <label class="f">Email<input type="email" id="loginEmail" required placeholder="you@mail.sacredheart.edu" autocomplete="username" value="${esc(em)}"></label>
+      ${m!=='reset'?`<label class="f">${inv?'Team password':'Password'}<input type="password" id="loginPw" required autocomplete="current-password" ${inv?'autofocus':''}></label>`:''}
+      ${m==='reset'?`<p class="sub" style="margin:0;font-size:13px">Easiest: ask Coach to reset you to the team password. Or we can email you a link to set a new one.</p>`:''}
+      <button class="btn primary" type="submit" id="loginBtn">${m==='reset'?'Email me a reset link':'Sign in'}</button>
       <p class="sub" id="loginMsg" style="margin:0;font-size:13px" role="status"></p>
       <div class="row" style="justify-content:space-between;font-size:13px">
-        ${m==='signin'?`<button type="button" class="btn small ghost" data-lm="reset">Forgot password?</button><button type="button" class="btn small ghost" data-lm="signup">First time here? Create your password</button>`:`<button type="button" class="btn small ghost" data-lm="signin">← Back to sign in</button>`}
+        ${m==='signin'?`<button type="button" class="btn small ghost" data-lm="reset">Forgot password?</button><span class="sub" style="font-size:12.5px">First time? Use the team password Coach gave you.</span>`:`<button type="button" class="btn small ghost" data-lm="signin">← Back to sign in</button>`}
       </div>
     </form>
     <div id="previewBox"></div>
@@ -515,32 +515,28 @@ function bindLogin(){
     try{
       if(LOGINMODE==='signin'){const pw=$('#loginPw').value;if(!pw)throw new Error('Enter your password.');
         const {error}=await sb.auth.signInWithPassword({email,password:pw});
-        if(error)throw new Error(/invalid/i.test(error.message)?'Email or password is wrong. If you haven’t set a password yet, use “First time here?” or “Forgot password?”.':/confirm/i.test(error.message)?'Confirm your email first: open the link we sent you, then sign in.':error.message);
-        location.reload();return}
-      if(LOGINMODE==='signup'){const pw=$('#loginPw').value,pw2=$('#loginPw2').value;
-        if(pw.length<8)throw new Error('Use at least 8 characters.');if(pw!==pw2)throw new Error('The two passwords don’t match.');
-        const {data,error}=await sb.auth.signUp({email,password:pw,options:{emailRedirectTo:SITE_URL(),data:{pw_set:true}}});if(error)throw error;
-        if(data.user&&Array.isArray(data.user.identities)&&!data.user.identities.length){const {error:re}=await sb.auth.resetPasswordForEmail(email,{redirectTo:SITE_URL()});
-          msg.textContent=re?'You already have an account (Coach’s invite created it). Open the invite email to set your password, or tap “Forgot password?”.':`You already have an account. Coach's invite created it. We just emailed ${email} a link to set your password. Open it on this device.`;return}
-        if(data.session){location.reload();return}
-        msg.textContent=`Almost done: we sent a confirmation link to ${email}. Open it once, and after that you'll sign in with your password.`;return}
-      if(LOGINMODE==='reset'){const {error}=await sb.auth.resetPasswordForEmail(email,{redirectTo:SITE_URL()});if(error)throw error;
+        if(error)throw new Error(/invalid/i.test(error.message)?'That email and password don’t match. First time? Use the team password Coach gave you. Changed it and forgot? Ask Coach to reset you.':error.message);
+        location.replace(SITE_URL());return}
+      if(LOGINMODE==='reset'){const {error}=await sb.auth.resetPasswordForEmail(email,{redirectTo:SITE_URL()});
+        if(error)throw new Error(/rate limit/i.test(error.message)?'Too many emails went out in the last hour. Ask Coach to reset you to the team password instead; that works instantly.':error.message);
         msg.textContent=`If ${email} has an account, a reset link is on its way. Open it on this device to choose a new password.`;return}
     }catch(err){msg.textContent=err.message||String(err)}finally{b.disabled=false}};
+  if(INVITE_EMAIL){const pw=$('#loginPw');if(pw)pw.focus()}
   getSeed().then(seed=>{if(!seed||!$('#previewBox'))return;$('#previewBox').innerHTML=`<div class="panel stack"><b>Preview with the imported Drive data</b><span class="sub" style="font-size:13px">Opens the coach view using the throwing programs pulled from Google Drive. Changes stay in this browser.</span><button class="btn" id="startDemo">Open preview</button></div>`;
     $('#startDemo').onclick=()=>{Demo.start(seed);go('staff');render()}});
 }
 /* Shown after an invite/confirmation link, a reset link, or for anyone who signed in before passwords existed. */
-function setPasswordView(email,reason){
+function setPasswordView(email,reason,onSkip){
   $('#nav').innerHTML='';$('#who').innerHTML='';
-  $('#app').innerHTML=`<div class="login stack"><div class="eyebrow">${esc(email)}</div><h1>${reason==='recovery'?'Choose a new password':'Create your password'}</h1>
-    <p class="sub">${reason==='recovery'?'Set a new password for SHUpitcherhub.':'From now on you’ll sign in with your email and this password instead of an email link.'}</p>
+  $('#app').innerHTML=`<div class="login stack"><div class="eyebrow">${esc(email)}</div><h1>${reason==='recovery'?'Choose a new password':reason==='team'?'Make it yours':'Create your password'}</h1>
+    <p class="sub">${reason==='recovery'?'Set a new password for SHUpitcherhub.':reason==='team'?'You’re in with the team password. Pick your own now so only you can get into your account. You can change it any time under Password.':'From now on you’ll sign in with your email and this password instead of an email link.'}</p>
     <form class="panel stack" id="pwForm"><label class="f">New password<input type="password" id="pw1" minlength="8" required autocomplete="new-password"></label>
       <label class="f">Confirm password<input type="password" id="pw2" minlength="8" required autocomplete="new-password"></label>
-      <button class="btn primary" type="submit" id="pwGo">Save password</button><p class="sub" id="pwMsg" style="margin:0;font-size:13px" role="status"></p></form></div>`;
+      <button class="btn primary" type="submit" id="pwGo">Save password</button>${onSkip?'<button type="button" class="btn ghost" id="pwSkip">Not now</button>':''}<p class="sub" id="pwMsg" style="margin:0;font-size:13px" role="status"></p></form></div>`;
+  const sk=$('#pwSkip');if(sk)sk.onclick=onSkip;
   $('#pwForm').onsubmit=async e=>{e.preventDefault();const a=$('#pw1').value,b=$('#pw2').value,m=$('#pwMsg');
     if(a.length<8){m.textContent='Use at least 8 characters.';return}if(a!==b){m.textContent='The two passwords don’t match.';return}
-    $('#pwGo').disabled=true;const {error}=await sb.auth.updateUser({password:a,data:{pw_set:true}});
+    $('#pwGo').disabled=true;const {error}=await sb.auth.updateUser({password:a,data:{pw_set:true,default_pw:false,pw_changed:true}});
     if(error){m.textContent=/same/i.test(error.message)?'That’s your current password. Pick a different one, or just sign in.':error.message;$('#pwGo').disabled=false;return}
     toast('Password saved');location.hash='';location.reload()};
 }
@@ -550,7 +546,7 @@ function changePassword(){
     <button class="btn primary" type="submit">Save password</button><p class="sub" id="cpMsg" style="margin:0;font-size:13px"></p></form>`);
   $('#cpClose').onclick=closeLayer;
   $('#cpForm').onsubmit=async e=>{e.preventDefault();const a=$('#cp1').value,b=$('#cp2').value,m=$('#cpMsg');if(a.length<8){m.textContent='Use at least 8 characters.';return}if(a!==b){m.textContent='The two passwords don’t match.';return}
-    const {error}=await sb.auth.updateUser({password:a,data:{pw_set:true}});if(error){m.textContent=error.message;return}closeLayer();toast('Password changed')};
+    const {error}=await sb.auth.updateUser({password:a,data:{pw_set:true,default_pw:false,pw_changed:true}});if(error){m.textContent=error.message;return}closeLayer();toast('Password changed')};
 }
 function noAccessView(){
   return `<div class="login stack"><h1>Almost there</h1>
@@ -1223,17 +1219,17 @@ async function saveBuild(){
 /* ============================================================ roster & invites */
 function rosterView(){
   $('#app').innerHTML=`<div class="stack">
-    <div class="spread"><div><h1>Roster & invites</h1><p class="sub" style="margin:4px 0 0">Add each pitcher's email, then send the invite. He gets a link, creates his password, and signs in with email and password from then on.</p></div>
-      <div class="row"><button class="btn" id="rAdd">Add pitcher</button><button class="btn primary" id="rSendAll">Send all pending invites</button></div></div>
-    <div class="panel"><div class="tbl-wrap"><table><thead><tr><th>Pitcher</th><th>Short name</th><th>Role</th><th>Game target</th><th style="min-width:240px">Email</th><th>Invite</th><th></th></tr></thead><tbody>
+    <div class="spread"><div><h1>Roster & invites</h1><p class="sub" style="margin:4px 0 0">Add each pitcher's email and send the invite. His login is created with the team password, and the email link takes him to sign-in with his email filled in. He types the team password, gets in, and is asked to pick his own.</p></div>
+      <div class="row"><button class="btn" id="rAdd">Add pitcher</button><button class="btn" id="rLogins">Create logins for everyone</button><button class="btn primary" id="rSendAll">Send all pending invites</button></div></div>
+    <div class="panel"><div class="tbl-wrap"><table><thead><tr><th>Pitcher</th><th>Short name</th><th>Role</th><th>Game target</th><th style="min-width:240px">Email</th><th>Login</th><th></th></tr></thead><tbody>
     ${S.athletes.slice().sort((a,b)=>a.name.localeCompare(b.name)).map(a=>`<tr data-id="${a.id}">
       <td><b>${esc(a.name)}</b></td>
       <td><input type="text" data-k="nickname" value="${esc(a.nickname||'')}" style="width:110px"></td>
       <td><select data-k="role"><option value="" ${!a.role?'selected':''}>—</option><option value="SP" ${a.role==='SP'?'selected':''}>Starter</option><option value="RP" ${a.role==='RP'?'selected':''}>Reliever</option></select></td>
       <td class="row" style="flex-wrap:nowrap;gap:4px"><input type="number" step="0.5" data-k="ip" value="${a.targets?.ip??''}" placeholder="IP" style="width:64px"><input type="number" data-k="pitches" value="${a.targets?.pitches??''}" placeholder="P" style="width:64px"></td>
       <td><input type="email" data-k="email" value="${esc(a.email||'')}" placeholder="name@mail.sacredheart.edu" style="width:100%"></td>
-      <td>${(a.profile||{}).invitedAt?`<span class="pill good">Sent ${md(iso(a.profile.invitedAt))}</span>`:a.email?'<span class="pill warn">Not sent</span>':'<span class="sub">—</span>'}</td>
-      <td class="r" style="white-space:nowrap"><button class="btn small" data-save="${a.id}">Save</button> <button class="btn small" data-inv="${a.id}" ${a.email?'':'disabled'}>Send invite</button></td></tr>`).join('')}
+      <td data-login="${esc((a.email||'').toLowerCase())}">${a.email?'<span class="sub">…</span>':'<span class="sub">Add an email</span>'}${(a.profile||{}).invitedAt?`<div class="sub" style="font-size:11.5px">Invite emailed ${md(iso(a.profile.invitedAt))}</div>`:''}</td>
+      <td class="r" style="white-space:nowrap"><button class="btn small" data-save="${a.id}">Save</button> <button class="btn small" data-inv="${a.id}" ${a.email?'':'disabled'}>Send invite</button> <button class="btn small" data-reset="${a.id}" ${a.email?'':'disabled'}>Reset to team password</button></td></tr>`).join('')}
     </tbody></table></div></div>
     <div class="panel stack"><h2>Coaches</h2><p class="sub" style="margin:0">Coaches see the whole staff and can build programs. Add another coach's email here; they sign in the same way.</p>
       <div class="row"><input type="email" id="staffEmail" placeholder="coach@sacredheart.edu" style="flex:1;min-width:220px"><button class="btn" id="staffAdd">Add coach</button></div></div>
@@ -1243,23 +1239,38 @@ function rosterView(){
     if(em!==(a.email||'')){a.email=em;if(a.profile)delete a.profile.invitedAt}return a};
   document.querySelectorAll('[data-save]').forEach(b=>b.onclick=async()=>{try{await API.saveAthlete(rowData(b.closest('tr')));toast('Saved');rosterView()}catch(e){toast(e.message)}});
   document.querySelectorAll('[data-inv]').forEach(b=>b.onclick=async()=>{const a=rowData(b.closest('tr'));await sendInvites([a])});
+  document.querySelectorAll('[data-reset]').forEach(b=>b.onclick=async()=>{const a=rowData(b.closest('tr'));if(S.mode==='demo'){toast('Preview mode');return}
+    try{await API.saveAthlete(a);const {data,error}=await sb.rpc('reset_to_team_password',{target:a.email});if(error)throw error;toast(`${a.nickname||a.name}: ${data}. He signs in with the team password.`);loadLoginStatus()}catch(e){toast(e.message)}});
+  $('#rLogins').onclick=async()=>{if(S.mode==='demo'){toast('Preview mode');return}document.querySelectorAll('tbody tr[data-id]').forEach(tr=>rowData(tr));
+    try{for(const a of S.athletes)if(a.email)await API.saveAthlete(a);const {data,error}=await sb.rpc('provision_roster');if(error)throw error;
+      const made=(data||[]).filter(r=>r.result==='created').length;toast(`${made} new login${made===1?'':'s'} created · ${(data||[]).length} pitchers checked`);loadLoginStatus()}catch(e){toast(e.message)}};
+  loadLoginStatus();
   $('#rSendAll').onclick=async()=>{document.querySelectorAll('tbody tr[data-id]').forEach(tr=>rowData(tr));const xs=S.athletes.filter(a=>a.email&&!(a.profile||{}).invitedAt);if(!xs.length){toast('No pending invites. Add emails first.');return}await sendInvites(xs)};
   $('#rAdd').onclick=()=>{openLayer(`<h2>Add pitcher</h2><label class="f">Full name<input type="text" id="naName"></label><label class="f">Short name<input type="text" id="naNick"></label><label class="f">Email<input type="email" id="naEmail"></label><div class="row"><button class="btn primary" id="naGo">Add</button><button class="btn" id="naNo">Cancel</button></div>`);
     $('#naNo').onclick=closeLayer;$('#naGo').onclick=async()=>{const name=$('#naName').value.trim();if(!name){toast('Enter a name');return}let id=name.toLowerCase().replace(/[^a-z]/g,'');while(athlete(id))id+='x';
       await API.saveAthlete({id,name,nickname:$('#naNick').value.trim(),role:'',targets:{},role_note:'',email:$('#naEmail').value.trim().toLowerCase(),profile:{},archive:{}});closeLayer();toast('Added '+name);rosterView()}};
   $('#staffAdd').onclick=async()=>{const e=$('#staffEmail').value.trim().toLowerCase();if(!e)return;try{if(S.mode==='demo'){toast('Preview mode: coach not saved');return}const {error}=await sb.from('staff').upsert([{email:e}]);if(error)throw error;toast('Coach added');$('#staffEmail').value=''}catch(err){toast(err.message)}};
 }
+async function loadLoginStatus(){
+  if(S.mode!=='cloud')return;const {data,error}=await sb.rpc('account_status');if(error)return;const by=Object.fromEntries((data||[]).map(r=>[r.email,r]));
+  document.querySelectorAll('[data-login]').forEach(td=>{const em=td.dataset.login;if(!em)return;const r=by[em];const extra=td.querySelector('div')?td.querySelector('div').outerHTML:'';
+    td.innerHTML=(!r||!r.has_login?'<span class="pill warn">No login yet</span>':r.on_team_password?'<span class="pill">Team password</span>':'<span class="pill good">Own password</span>')+
+      (r&&r.last_sign_in?`<div class="sub" style="font-size:11.5px">Last in ${new Date(r.last_sign_in).toLocaleDateString()}</div>`:r&&r.has_login?'<div class="sub" style="font-size:11.5px">Hasn’t signed in</div>':'')+extra});
+}
+/* Invite = make sure his login exists on the team password, then email him a link to the sign-in page. */
 async function sendInvites(list){
-  let ok=0,fail=[];
+  if(S.mode==='demo'){toast('Preview mode: nothing sent');return}
+  const {data:isSet}=await sb.rpc('team_password_is_set');if(!isSet){openLayer(`<h2>Set the team password first</h2><p>Go to <b>Setup → Team password</b>, type it once, then send invites.</p><div class="row"><a class="btn primary" href="#setup" onclick="closeLayer()">Open Setup</a></div>`);return}
+  let ok=0,mailed=0;const fail=[];
   for(const a of list){
-    try{await API.saveAthlete(a);
-      if(S.mode!=='demo'){const {error}=await sb.auth.signInWithOtp({email:a.email,options:{shouldCreateUser:true,emailRedirectTo:SITE_URL()}});if(error)throw error}
-      a.profile=a.profile||{};a.profile.invitedAt=new Date().toISOString();await API.saveAthlete(a);ok++}
+    try{await API.saveAthlete(a);const {error:e1}=await sb.rpc('reset_to_team_password',{target:a.email}).then(r=>r);if(e1)throw e1;ok++;
+      const {error:e2}=await sb.auth.signInWithOtp({email:a.email,options:{shouldCreateUser:false,emailRedirectTo:SITE_URL()+'?invite='+encodeURIComponent(a.email)}});
+      if(e2)fail.push(`${a.nickname||a.name}: login ready, but the email didn't send (${/rate limit/i.test(e2.message)?'hourly email limit':e2.message}). Text him the site link and the team password.`);
+      else{mailed++;a.profile=a.profile||{};a.profile.invitedAt=new Date().toISOString();await API.saveAthlete(a)}}
     catch(e){fail.push(`${a.nickname||a.name}: ${e.message}`)}
   }
-  if(S.mode==='demo')toast(`Preview mode: marked ${ok} as invited, no emails sent`);
-  else if(fail.length)openLayer(`<h2>Some invites didn't send</h2><p>${ok} sent.</p><ul>${fail.map(f=>`<li>${esc(f)}</li>`).join('')}</ul><p class="sub">Supabase's built-in mailer only allows a few emails per hour. Add your own email provider under Supabase → Authentication → Emails → SMTP, then try again.</p><button class="btn" onclick="closeLayer()">Close</button>`);
-  else toast(`Invite${ok>1?'s':''} sent to ${ok} pitcher${ok>1?'s':''}`);
+  if(fail.length)openLayer(`<h2>Invites</h2><p>${ok} login${ok===1?'':'s'} ready · ${mailed} email${mailed===1?'':'s'} sent.</p><ul>${fail.map(f=>`<li>${esc(f)}</li>`).join('')}</ul><p class="sub">Site: <span class="mono">${esc(SITE_URL())}</span></p><button class="btn" onclick="closeLayer()">Close</button>`);
+  else toast(`Invite${mailed>1?'s':''} sent to ${mailed} pitcher${mailed>1?'s':''}. Logins are ready.`);
   rosterView();
 }
 
@@ -1277,6 +1288,9 @@ function setupView(){
     <div class="panel stack"><h2>Import from Google Drive</h2>
       <p class="sub prose" style="margin:0">Loads every pitcher's throwing program sheet: weekly plans, daily check-ins, program cards, warm-ups, goals, return-to-throw programs, Drive links and a full copy of each original sheet. Choose the <b>shu-seed.json</b> file. Importing again updates pitchers and adds missing days without touching anything logged in the app.</p>
       <div class="row"><input type="file" id="seedFile" accept=".json,application/json"><button class="btn primary" id="seedGo">Import</button></div><div id="seedMsg" class="sub"></div></div>
+    <div class="panel stack"><h2>Team password</h2>
+      <p class="sub prose" style="margin:0">Every pitcher's first password. They're asked to pick their own after signing in, and you can put anyone back on it from Roster & invites. It's stored where no one can read it back, including on this page.</p>
+      <div class="row"><input type="password" id="tpw" placeholder="Type the team password" autocomplete="new-password" style="flex:1;min-width:200px"><button class="btn primary" id="tpwSave">Save team password</button><span class="sub" id="tpwState" style="font-size:13px"></span></div></div>
     <div class="panel stack"><div class="spread"><h2>Drill library</h2><span class="sub" style="font-size:12px">New drills typed in the builder land here automatically</span></div>
       <div class="row"><input type="text" id="dlFilter" placeholder="Search drills" style="flex:1;min-width:200px"><button class="btn" id="dlAdd">Add drill</button><button class="btn primary" id="dlSave">Save library</button></div>
       <div class="tbl-wrap" style="max-height:460px"><table><thead><tr><th>Drill</th><th>Section</th><th>Default notes / cues</th><th></th></tr></thead><tbody id="dlRows"></tbody></table></div></div>
@@ -1284,6 +1298,8 @@ function setupView(){
   </div>`;
   $('#wtSave').onclick=async()=>{const v=T.map((t,i)=>({...t,load:t.load==='auto'?'auto':(+document.querySelector(`[data-i="${i}"]`).value||0),rpe:document.querySelector(`[data-r="${i}"]`).value}));await API.saveSetting('workloadTypes',v);toast('Points saved')};
   $('#calSave').onclick=async()=>{const v=calendar().map((c,i)=>({date:document.querySelector(`[data-cd="${i}"]`).value,label:document.querySelector(`[data-cl="${i}"]`).value}));await API.saveSetting('calendar',v);toast('Dates saved')};
+  if(S.mode==='cloud')sb.rpc('team_password_is_set').then(({data})=>{const el=$('#tpwState');if(el)el.textContent=data?'Team password is set.':'Not set yet.'});
+  $('#tpwSave').onclick=async()=>{const v=$('#tpw').value;if(S.mode!=='cloud'){toast('Preview mode');return}const {error}=await sb.rpc('set_team_password',{pw:v});if(error){toast(error.message);return}$('#tpw').value='';$('#tpwState').textContent='Team password is set.';toast('Team password saved')};
   let DL=JSON.parse(JSON.stringify(drillLib()));
   const dlDraw=()=>{const f=($('#dlFilter').value||'').toLowerCase();$('#dlRows').innerHTML=DL.map((d,i)=>!f||d.name.toLowerCase().includes(f)?`<tr data-di="${i}"><td><input data-k="name" value="${esc(d.name)}" style="width:100%;min-width:180px"></td><td><select data-k="section">${SECTIONS.map(([k,l])=>`<option value="${k}" ${d.section===k?'selected':''}>${l}</option>`).join('')}</select></td><td><input data-k="notes" value="${esc(d.notes||'')}" style="width:100%;min-width:220px" placeholder="Cue or how-to"></td><td><button class="btn small ghost" data-dldel="${i}" aria-label="Remove">✕</button></td></tr>`:'').join('');
     document.querySelectorAll('#dlRows input,#dlRows select').forEach(x=>x.onchange=()=>{DL[+x.closest('tr').dataset.di][x.dataset.k]=x.value});
@@ -1356,6 +1372,8 @@ async function boot(){
   sb=window.supabase.createClient(CLOUD.url,CLOUD.key,{auth:{persistSession:true,detectSessionInUrl:true,flowType:'implicit'}});
   const {data}=await sb.auth.getSession();
   if(data.session&&(RECOVERY||!(data.session.user.user_metadata||{}).pw_set)){setPasswordView(data.session.user.email,RECOVERY?'recovery':'new');return}
+  if(data.session&&(data.session.user.user_metadata||{}).default_pw&&!sessionStorage.getItem('shuhub_pwSkip')){
+    setPasswordView(data.session.user.email,'team',()=>{try{sessionStorage.setItem('shuhub_pwSkip','1')}catch(e){}location.reload()});return}
   if(data.session){S.mode='cloud';
     try{await cloudLoad()}catch(e){
       $('#app').innerHTML=`<div class="login stack"><h1>One setup step left</h1><div class="panel stack"><p style="margin:0">Signed in as <b>${esc(data.session.user.email)}</b>, but the hub's tables aren't in the database yet.</p><p class="sub" style="margin:0">Open Supabase → SQL Editor, paste <span class="mono">supabase/setup.sql</span> from this site's repo, put your email in the last line, and run it. Then reload.</p><p class="sub mono" style="margin:0;font-size:12px">${esc(e.message||e)}</p><button class="btn" onclick="signOut()">Sign out</button></div></div>`;return}
