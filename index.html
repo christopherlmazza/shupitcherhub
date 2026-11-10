@@ -219,6 +219,12 @@ td.r,th.r{text-align:right}
   .daily{gap:6px}.ds-grid{columns:3;column-gap:8px}.ds-card{font-size:var(--dsf,11px);padding:5px 7px;margin-bottom:6px;border-color:#999;box-shadow:none;animation:none}
   .chip{-webkit-print-color-adjust:exact;print-color-adjust:exact}.ds-note{-webkit-print-color-adjust:exact;print-color-adjust:exact}
 }
+.voice{border:1px solid var(--line);border-radius:8px;padding:10px 12px;display:flex;flex-direction:column;gap:8px;background:var(--soft)}
+.voice textarea{min-height:76px}.mic.rec{background:var(--bad);border-color:var(--bad);color:#fff;animation:pulse 1.2s infinite}
+@keyframes pulse{50%{opacity:.6}}@media (prefers-reduced-motion:reduce){.mic.rec{animation:none}}
+.vreview{border:2px solid var(--ink);border-radius:8px;padding:10px 12px;background:var(--panel)}.vlist{margin:2px 0 0;padding-left:18px}.vlist li{margin:1px 0}
+.vsum{display:flex;flex-direction:column;gap:3px;margin-top:6px;font-size:.92em}.vsum b{font:600 11px var(--f-display);letter-spacing:.1em;text-transform:uppercase;color:var(--red);display:block}.vsum span{display:block}
+details.manual>summary{cursor:pointer;color:var(--muted);font-size:13px;padding:4px 0}
 .hubframe{display:block;width:100%;height:900px;border:0;background:var(--bg)}
 .viewsw{display:flex;align-items:center;gap:6px}.viewsw span{font:600 12px var(--f-display);letter-spacing:.1em;text-transform:uppercase;opacity:.8}.viewsw select{background:transparent;color:inherit;border:1px solid currentColor;border-radius:6px;padding:4px 8px;font-size:12.5px;max-width:190px}.viewsw select option{color:#1d1a1b;background:#fff}
 .login h1{font-size:48px}
@@ -586,7 +592,7 @@ function seasonStrip(){
 }
 function staffRows(){
   const ws=monday(TODAY);
-  return S.athletes.map(a=>{
+  return S.athletes.filter(a=>!isTest(a)).map(a=>{
     const plan=planDay(a.id,TODAY);const lc=lastCheckin(a.id);const ll=lastLog(a.id);const r=acwr(a.id,ws);
     const planned=weekLoad(a.id,ws,'plan');
     const dots=[];for(let i=6;i>=0;i--){const d=addDays(TODAY,-i);const l=logFor(a.id,d);dots.push(l?(l.checkin==null?'ok':ciCls(l.checkin)==='ok'?'ok':ciCls(l.checkin)):'')}
@@ -702,7 +708,7 @@ function programTab(a){
 }
 function logTab(a){
   const logs=S.logs.filter(l=>l.athlete_id===a.id).sort((x,y)=>y.date.localeCompare(x.date));
-  return `<div class="panel"><div class="spread"><h2>Daily log</h2><button class="btn small" data-day="${TODAY}" data-aid="${a.id}">Add today</button></div>${logs.length?`<div class="tbl-wrap"><table><thead><tr><th>Date</th><th>Did</th><th>Check-in</th><th class="r">Throws</th><th class="r">Effort</th><th class="r">IP</th><th class="r">Pitches</th><th>Pen</th><th>Notes</th></tr></thead><tbody>${logs.map(l=>`<tr class="click" data-day="${l.date}" data-aid="${a.id}"><td class="mono">${dayName(l.date)} ${md(l.date)}</td><td>${chip(doneType(a.id,l.date))}</td><td>${ciBadge(l.checkin)}</td><td class="r num">${l.throws??''}</td><td class="r num">${l.intensity!=null?l.intensity+'%':''}</td><td class="r num">${l.innings??''}</td><td class="r num">${l.pitches??''}</td><td class="mono">${esc(l.bullpen??'')}</td><td style="min-width:220px">${esc(l.notes??'')}</td></tr>`).join('')}</tbody></table></div>`:'<div class="empty">Nothing logged yet.</div>'}</div>`;
+  return `<div class="panel"><div class="spread"><h2>Daily log</h2><button class="btn small" data-day="${TODAY}" data-aid="${a.id}">Add today</button></div>${logs.length?`<div class="tbl-wrap"><table><thead><tr><th>Date</th><th>Did</th><th>Check-in</th><th class="r">Throws</th><th class="r">Effort</th><th class="r">IP</th><th class="r">Pitches</th><th>Pen</th><th>Notes</th></tr></thead><tbody>${logs.map(l=>`<tr class="click" data-day="${l.date}" data-aid="${a.id}"><td class="mono">${dayName(l.date)} ${md(l.date)}</td><td>${chip(doneType(a.id,l.date))}</td><td>${ciBadge(l.checkin)}</td><td class="r num">${l.throws??''}</td><td class="r num">${l.intensity!=null?l.intensity+'%':''}</td><td class="r num">${l.innings??''}</td><td class="r num">${l.pitches??''}</td><td class="mono">${esc(l.bullpen??'')}</td><td style="min-width:240px">${esc(l.notes??'')}${l.source==='voice'?' <span class="pill" title="Spoken log">🎙</span>':''}${logSummaryHtml(l)}</td></tr>`).join('')}</tbody></table></div>`:'<div class="empty">Nothing logged yet.</div>'}</div>`;
 }
 function cardHtml(type,card,editable){
   if(!card)return '';
@@ -846,7 +852,7 @@ function lastSeen(){const a=(S.settings[seenKey()]||{}).at;const b=lsGet('shuhub
 function updatesSince(t){
   const me=(S.me.email||'').toLowerCase();const items=[];
   for(const l of S.logs){if(!l.author||l.author.toLowerCase()===me||!(String(l.updated_at||'')>t))continue;const a=athlete(l.athlete_id);if(!a)continue;
-    items.push({at:l.updated_at,aid:a.id,kind:l.checkin!=null&&l.checkin>=6?'bad':l.checkin!=null&&l.checkin>=4?'warn':'',text:`${a.nickname||a.name} logged ${dayName(l.date)} ${md(l.date)}${l.type?' · '+l.type:''}${l.checkin!=null?' · check-in '+l.checkin+'/10':''}`,sub:l.notes||''})}
+    if(isTest(a))continue;items.push({at:l.updated_at,aid:a.id,kind:l.checkin!=null&&l.checkin>=6?'bad':l.checkin!=null&&l.checkin>=4?'warn':'',text:`${a.nickname||a.name}${l.source==='voice'?' 🎙':''} logged ${dayName(l.date)} ${md(l.date)}${l.type?' · '+l.type:''}${l.checkin!=null?' · check-in '+l.checkin+'/10':''}`,sub:l.notes||''})}
   for(const pg of S.programs){const a=athlete(pg.athlete_id);if(!a)continue;for(const [dt,dd] of Object.entries(pg.days||{})){if(!dd||!dd.editedBy||dd.editedBy.toLowerCase()===me||!(String(dd.editedAt||'')>t))continue;
     items.push({at:dd.editedAt,aid:a.id,kind:'',text:`${a.nickname||a.name} edited his plan for ${dayName(dt)} ${md(dt)}${dd.type?' · '+dd.type:''}`,sub:dd.dayNotes||'',tab:'program'})}}
   for(const v of S.videos){const a=athlete(v.athlete_id);if(!a||!v.author||v.author.toLowerCase()===me||!(String(v.created_at||'')>t))continue;
@@ -874,7 +880,7 @@ async function pollUpdates(){if(S.mode!=='cloud'||S.me.role!=='coach')return;try
 let PRINTDATE=null,PRINTONLY=false;
 function dailySheet(){
   const date=PRINTDATE||TODAY;const order={SP:0,RP:1,'':2};
-  const xs=S.athletes.slice().sort((a,b)=>(order[a.role||'']-order[b.role||''])||(a.nickname||a.name).localeCompare(b.nickname||b.name));
+  const xs=S.athletes.filter(a=>!isTest(a)).sort((a,b)=>(order[a.role||'']-order[b.role||''])||(a.nickname||a.name).localeCompare(b.nickname||b.name));
   const rows=xs.map(a=>({a,p:planDay(a.id,date),l:logFor(a.id,date)})).filter(x=>!PRINTONLY||(x.p&&(x.p.type||hasSecContent(x.p.sections)||x.p.dayNotes)));
   const counts={};rows.forEach(x=>{const t=(x.p&&x.p.type)||'No plan';counts[t]=(counts[t]||0)+1});
   const card=({a,p,l})=>{const t=targetNow(a,date);const tg=t.cur||t.final;
@@ -884,7 +890,7 @@ function dailySheet(){
       <div class="ds-meta">${[p&&(p.throws||(p.rtt&&p.rtt.throws))?`${p.throws||p.rtt.throws} throws`:'',p&&p.intensity?p.intensity+'% effort':'',p&&p.rtt&&p.rtt.velo?p.rtt.velo+' mph target':'',tg&&(tg.ip||tg.pitches)?'Target '+tgtTxt(tg):''].filter(Boolean).map(esc).join(' · ')}</div>
       ${p&&p.notes?`<div class="ds-note">${esc(p.notes)}</div>`:''}${p&&p.dayNotes?`<div class="ds-note">${esc(p.dayNotes)}</div>`:''}
       ${secs||(p?'':'<div class="ds-empty">No plan</div>')}
-      ${l?`<div class="ds-log">Logged${l.checkin!=null?` · check-in ${l.checkin}/10`:''}${l.notes?` · ${esc(l.notes)}`:''}</div>`:''}
+      ${l?`<div class="ds-log">Logged${l.type?` · ${esc(l.type)}`:''}${l.checkin!=null?` · check-in ${l.checkin}/10`:''}${l.notes?` · ${esc(l.notes)}`:''}</div>${logSummaryHtml(l)}`:''}
     </article>`};
   $('#app').innerHTML=`<div class="stack daily">
     <div class="spread noprint"><div><h1>Daily sheet</h1><p class="sub" style="margin:4px 0 0">Every pitcher's work for one day on one page.</p></div>
@@ -902,6 +908,67 @@ function dailySheet(){
 /* Print size by how much is on the sheet, so 16–20 pitchers still land on one letter page. */
 function fitDaily(){const el=document.querySelector('.daily');if(!el)return;const n=el.querySelectorAll('.ds-card').length;const lines=el.querySelectorAll('.ds-sec span,.ds-note,.ds-sec i').length;
   const load=n*3+lines;el.style.setProperty('--dsf',(load<=45?12:load<=80?10.5:load<=120?9.5:8.5)+'px')}
+
+
+/* ============================================================ voice log (speech → Claude → structured log; replaces that day's log) */
+const SR=window.SpeechRecognition||window.webkitSpeechRecognition;
+const isTest=a=>!!(a&&a.profile&&a.profile.test);
+function voiceBlock(prefix){
+  return `<div class="voice" id="${prefix}voice">
+    <div class="spread"><div><b>Talk it through</b><div class="sub" style="font-size:12.5px">Say what you did: pre-work, plyos, throwing, med ball, pen, how the arm felt.</div></div>
+      <button type="button" class="btn ${SR?'primary':''} mic" id="${prefix}mic" ${SR?'':'disabled'} aria-label="Start talking">${SR?'🎙 Start':'🎙 Use keyboard mic'}</button></div>
+    <textarea id="${prefix}tx" placeholder="${SR?'Tap Start and talk, or type here.':'Tap the box, then the mic on your keyboard to dictate.'}" rows="3"></textarea>
+    <div class="row"><button type="button" class="btn small" id="${prefix}read">Build my log from this</button><span class="sub" id="${prefix}vmsg" style="font-size:12.5px" role="status"></span></div>
+    <div id="${prefix}review"></div></div>`;
+}
+function bindVoice(prefix,aid,date,after){
+  const tx=$('#'+prefix+'tx');if(!tx)return;let rec=null,on=false,base='';
+  const mic=$('#'+prefix+'mic');
+  if(SR&&mic)mic.onclick=()=>{
+    if(on){on=false;rec&&rec.stop();mic.textContent='🎙 Start';mic.classList.remove('rec');return}
+    rec=new SR();rec.lang='en-US';rec.continuous=true;rec.interimResults=true;base=tx.value?tx.value.trim()+' ':'';
+    rec.onresult=e=>{let fin='',int='';for(let i=0;i<e.results.length;i++){const t=e.results[i][0].transcript;if(e.results[i].isFinal)fin+=t+' ';else int+=t}tx.value=(base+fin+int).trim()};
+    rec.onerror=e=>{$('#'+prefix+'vmsg').textContent=e.error==='not-allowed'?'Allow the microphone for this site in your browser settings, or use the keyboard mic.':'Mic stopped ('+e.error+'). Tap Start again.'};
+    rec.onend=()=>{if(on){base=tx.value?tx.value.trim()+' ':'';try{rec.start()}catch(err){}}};
+    try{rec.start();on=true;mic.textContent='■ Stop';mic.classList.add('rec');$('#'+prefix+'vmsg').textContent='Listening…'}catch(err){$('#'+prefix+'vmsg').textContent='Couldn’t start the mic. Use the keyboard mic instead.'}
+  };
+  $('#'+prefix+'read').onclick=async()=>{
+    if(on){on=false;rec&&rec.stop();mic.textContent='🎙 Start';mic.classList.remove('rec')}
+    const t=tx.value.trim();const msg=$('#'+prefix+'vmsg');if(!t){msg.textContent='Say or type what you did first.';return}
+    if(S.mode!=='cloud'){msg.textContent='Voice logging works on the live site, not the preview.';return}
+    const p=planDay(aid,date);const ex=logFor(aid,date);
+    const plan=p?{type:p.type,throws:p.throws,intensity:p.intensity,dayNotes:p.dayNotes,sections:p.sections?Object.fromEntries(SECTIONS.map(([k,l])=>[l,[...(p.sections[k]||[]).filter(d=>d.name).map(d=>[d.name,d.sets&&d.sets+'x',d.reps,d.ball,d.notes].filter(Boolean).join(' ')),p.sections[k+'Notes']].filter(Boolean)])):undefined}:null;
+    const existing=ex?{type:ex.type,checkin:ex.checkin,throws:ex.throws,intensity:ex.intensity,innings:ex.innings,pitches:ex.pitches,bullpen:ex.bullpen,notes:ex.notes}:null;
+    msg.textContent='Reading it…';$('#'+prefix+'read').disabled=true;
+    try{const {data,error}=await sb.functions.invoke('voice-log',{body:{transcript:t,athlete_id:aid,date,plan,existing,types:types().map(x=>({name:x.name,load:x.load,rpe:x.rpe}))}});
+      if(error){let m=error.message;try{const b=await error.context.json();m=b.error||m}catch(e2){}throw new Error(m)}
+      if(data.error)throw new Error(data.error);msg.textContent='';showVoiceReview(prefix,aid,date,data.day,t,ex,after)}
+    catch(err){msg.textContent=err.message||String(err)}finally{$('#'+prefix+'read').disabled=false}};
+}
+function showVoiceReview(prefix,aid,date,d,transcript,ex,after){
+  const SEC=[['prework','Pre-work'],['plyo','Plyo'],['throwing','Throwing'],['medball','Med ball'],['focus','Bullpen / live'],['other','Other']];
+  const ciPicked=$('#'+prefix+'ci .on');const ci=d.checkin!=null?d.checkin:(ciPicked?+ciPicked.dataset.v:null);
+  const nums=[d.throws!=null?`${d.throws} throws`:'',d.intensity!=null?`${d.intensity}% effort`:'',d.pitches!=null?`${d.pitches} pitches`:'',d.innings!=null?`${d.innings} IP`:'',ci!=null?`check-in ${ci}/10`:''].filter(Boolean).join(' · ');
+  const pts=d.day_type?(d.day_type===RTT?genericRttLoad({throws:d.throws,intensity:d.intensity}):pts_(d.day_type)):0;
+  $('#'+prefix+'review').innerHTML=`<div class="vreview stack">
+    <div class="spread"><div class="row" style="gap:8px">${chip(d.day_type)}<span class="mono" style="font-size:12.5px">${pts} pts</span></div><span class="sub mono" style="font-size:12px">${esc(nums)}</span></div>
+    ${SEC.filter(([k])=>(d.sections[k]||[]).length).map(([k,l])=>`<div><div class="sec-h" style="color:var(--red)">${l}</div><ul class="vlist">${d.sections[k].map(x=>`<li>${esc(x)}</li>`).join('')}</ul></div>`).join('')||'<p class="sub" style="margin:0">No specific drills picked up.</p>'}
+    ${d.bullpen?`<div><div class="sec-h">Bullpen</div><p style="margin:2px 0 0">${esc(d.bullpen)}</p></div>`:''}
+    ${d.notes?`<div class="daynote"><b>Summary</b><p>${esc(d.notes)}</p></div>`:''}
+    ${(d.differences||[]).length?`<div><div class="sec-h">Different from the plan</div><ul class="vlist">${d.differences.map(x=>`<li>${esc(x)}</li>`).join('')}</ul></div>`:''}
+    ${(d.unclear||[]).length?`<div><div class="sec-h" style="color:var(--warn)">Not sure about</div><ul class="vlist">${d.unclear.map(x=>`<li>${esc(x)}</li>`).join('')}</ul></div>`:''}
+    ${ex?`<p class="sub" style="margin:0;font-size:12.5px">Saving replaces what you logged earlier for ${md(date)}${ex.type?` (${esc(ex.type)})`:''}.</p>`:''}
+    <div class="row"><button type="button" class="btn primary" id="${prefix}vsave">Save this as my log</button><button type="button" class="btn ghost" id="${prefix}vno">Discard</button></div></div>`;
+  $('#'+prefix+'vno').onclick=()=>{$('#'+prefix+'review').innerHTML=''};
+  $('#'+prefix+'vsave').onclick=async()=>{
+    const sections=Object.fromEntries(SEC.map(([k])=>[k,d.sections[k]||[]]));
+    const log={athlete_id:aid,date,type:d.day_type||null,checkin:ci,throws:d.throws??null,intensity:d.intensity??null,innings:d.innings??null,pitches:d.pitches??null,bullpen:d.bullpen||null,
+      notes:d.notes||null,transcript,summary:{sections,differences:d.differences||[],unclear:d.unclear||[],source:'voice',at:new Date().toISOString()},source:'voice'};
+    try{await API.saveLog(log);toast('Logged. Coach can see it now.');after&&after()}catch(e){toast(e.message)}};
+}
+const pts_=t=>pts(t);
+function logSummaryHtml(l){const sm=l&&l.summary;if(!sm||!sm.sections)return '';const SEC=[['prework','Pre-work'],['plyo','Plyo'],['throwing','Throwing'],['medball','Med ball'],['focus','Bullpen / live'],['other','Other']];
+  return `<div class="vsum">${SEC.filter(([k])=>(sm.sections[k]||[]).length).map(([k,lab])=>`<div><b>${lab}</b>${sm.sections[k].map(x=>`<span>• ${esc(x)}</span>`).join('')}</div>`).join('')}${(sm.differences||[]).length?`<div><b>Vs. plan</b>${sm.differences.map(x=>`<span>• ${esc(x)}</span>`).join('')}</div>`:''}</div>`}
 
 /* ============================================================ drawers */
 function closeLayer(){$('#layer').innerHTML=''}
@@ -946,9 +1013,9 @@ function dayDrawer(aid,date){
     ${p?sectionsHtml(p):''}
     <button class="btn small" id="dEditDay">${p?'Edit this day’s plan':'Add a plan for this day'}</button>${p&&p.editedBy?`<span class="sub" style="font-size:12px">Edited by ${esc(p.editedBy===a.email?(a.nickname||a.name):'coach')} ${new Date(p.editedAt).toLocaleDateString()}</span>`:''}
     ${p&&p.rtt?rttDetailHtml(p,aid)+(S.me.role==='coach'&&!S.viewAs?rttInputs(p,aid):''):''}
-    <h3>Log</h3>${logForm(aid,date,'dl')}
+    <h3>Log</h3>${logFor(aid,date)&&logFor(aid,date).summary?logSummaryHtml(logFor(aid,date)):''}${voiceBlock('dl')}<details class="manual"><summary>Or fill it in by hand</summary>${logForm(aid,date,'dl')}</details>
     <div class="row"><button class="btn primary" id="dSave">Save log</button></div>`);
-  bindLogForm('dl');$('#dClose').onclick=closeLayer;
+  bindLogForm('dl');$('#dClose').onclick=closeLayer;bindVoice('dl',aid,date,()=>{closeLayer();render()});
   const ed=$('#dEditDay');if(ed)ed.onclick=()=>dayEditor(`${a.nickname||a.name} · ${dayName(date)} ${md(date)}`,p?{...p,program:undefined}:{},async(day)=>{await editDayPlan(aid,date,day);render()});
   if(p&&p.rtt&&$('#rSave')){const read=()=>({...p.rtt,throws:num($('#rT').value)||0,dist:num($('#rD').value)||60,intentThrows:num($('#rI').value)||0,velo:num($('#rV').value)});
     ['rT','rD','rI','rV'].forEach(id=>$('#'+id).oninput=()=>$('#rLoad').textContent=rttLoad(read(),maxVelo(aid))+' pts');
@@ -1231,7 +1298,7 @@ function rosterView(){
       <div class="row"><button class="btn" id="rAdd">Add pitcher</button><button class="btn" id="rLogins">Create logins for everyone</button><button class="btn primary" id="rSendAll">Send all pending invites</button></div></div>
     <div class="panel"><div class="tbl-wrap"><table><thead><tr><th>Pitcher</th><th>Short name</th><th>Role</th><th>Game target</th><th style="min-width:240px">Email</th><th>Login</th><th></th></tr></thead><tbody>
     ${S.athletes.slice().sort((a,b)=>a.name.localeCompare(b.name)).map(a=>`<tr data-id="${a.id}">
-      <td><b>${esc(a.name)}</b></td>
+      <td><b>${esc(a.name)}</b>${isTest(a)?' <span class="pill warn">Test</span>':''}</td>
       <td><input type="text" data-k="nickname" value="${esc(a.nickname||'')}" style="width:110px"></td>
       <td><select data-k="role"><option value="" ${!a.role?'selected':''}>—</option><option value="SP" ${a.role==='SP'?'selected':''}>Starter</option><option value="RP" ${a.role==='RP'?'selected':''}>Reliever</option></select></td>
       <td class="row" style="flex-wrap:nowrap;gap:4px"><input type="number" step="0.5" data-k="ip" value="${a.targets?.ip??''}" placeholder="IP" style="width:64px"><input type="number" data-k="pitches" value="${a.targets?.pitches??''}" placeholder="P" style="width:64px"></td>
@@ -1356,13 +1423,13 @@ function athleteToday(aid){
         ${p?sectionsHtml(p):''}
         ${p&&p.rtt?rttDetailHtml(p,aid):''}
       </div>
-      <div class="panel stack"><div class="spread"><h2>${logged?'Today’s log':'Log today'}</h2>${logged?'<span class="pill good">Logged</span>':''}</div>${logForm(aid,TODAY,'tl')}<button class="btn primary" id="tSave">${logged?'Update log':'Save log'}</button></div>
+      <div class="panel stack"><div class="spread"><h2>${logged?'Today’s log':'Log today'}</h2>${logged?'<span class="pill good">Logged</span>':''}</div>${voiceBlock('tl')}${logged&&logged.summary?logSummaryHtml(logged):''}<details class="manual"${logged&&!logged.summary?' open':''}><summary>Or fill it in by hand</summary>${logForm(aid,TODAY,'tl')}</details><button class="btn primary" id="tSave">${logged?'Update log':'Save log'}</button></div>
     </div>
     <div class="panel"><h2>This week</h2><div style="overflow-x:auto"><div class="cal" style="grid-template-columns:repeat(7,minmax(92px,1fr));min-width:680px">${strip}</div></div></div>
     ${targetCard(a,false)}
     
   </div>`;
-  bindLogForm('tl');
+  bindLogForm('tl');bindVoice('tl',aid,TODAY,()=>athleteToday(aid));
   $('#tEdit').onclick=()=>dayEditor(`${dayName(TODAY)} ${md(TODAY)}`,p?{...p,program:undefined}:{},async(day)=>{await editDayPlan(aid,TODAY,day);athleteToday(aid)});
   $('#tSave').onclick=async()=>{try{await API.saveLog(readLogForm('tl',aid,TODAY));toast('Logged. Coach can see it now.');athleteToday(aid)}catch(e){toast(e.message)}};
   document.querySelectorAll('.cal [data-day]').forEach(el=>el.onclick=()=>dayDrawer(aid,el.dataset.day));
