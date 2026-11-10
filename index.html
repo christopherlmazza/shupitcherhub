@@ -130,6 +130,7 @@ td.r,th.r{text-align:right}
 .cal .wk{font:500 12px var(--f-mono);color:var(--muted);padding:8px 4px}
 .cal .d{background:var(--soft);border-radius:7px;padding:6px;min-height:74px;display:flex;flex-direction:column;gap:5px;cursor:pointer;border:1px solid transparent;position:relative}
 .cal .d:hover{border-color:var(--muted)}
+.cal .d.filled{border:1px dashed var(--muted);background:transparent}
 .cal .d.today{border-color:var(--red);box-shadow:inset 0 0 0 1px var(--red)}
 .cal .d .dn{font:500 11px var(--f-mono);color:var(--muted)}
 .cal .d .meta{font-size:11px;color:var(--muted);line-height:1.3}
@@ -421,7 +422,13 @@ function rttToDays(rtt,startMonday,maxV){
   return days;
 }
 /* The newest program whose date range covers the day decides that day, even if it leaves the day blank, so an old block never bleeds into a new one. */
-function planDay(aid,date){let best=null;for(const p of S.programs){if(p.athlete_id!==aid||!p.days)continue;const inRange=p.start_date&&p.end_date?(date>=p.start_date&&date<=p.end_date):!!p.days[date];if(!inRange)continue;if(!best||String(p.created_at||'')>String(best.created_at||''))best=p}return best&&best.days[date]?{...best.days[date],program:best}:null}
+function planDay(aid,date){let best=null,fill=null;for(const p of S.programs){if(p.athlete_id!==aid||!p.days)continue;
+  if(p.source==='filled'){if(p.days[date])fill=p;continue}
+  const inRange=p.start_date&&p.end_date?(date>=p.start_date&&date<=p.end_date):!!p.days[date];if(!inRange)continue;if(!best||String(p.created_at||'')>String(best.created_at||''))best=p}
+  if(best&&best.days[date]&&(best.days[date].type||hasSecContent(best.days[date].sections)||best.days[date].dayNotes))return {...best.days[date],program:best};
+  /* Filled-in days (inferred from pitch data and his fall pattern) only show where no real plan exists. */
+  if(fill)return {...fill.days[date],program:fill,filled:true};
+  return best&&best.days[date]?{...best.days[date],program:best}:null}
 function logFor(aid,date){return S.logIdx[aid+'|'+date]||null}
 function doneType(aid,date){const l=logFor(aid,date);if(l&&l.type)return l.type;const p=planDay(aid,date);return p?p.type:null}
 function planLoad(aid,date){const p=planDay(aid,date);return p?cellLoad(p,maxVelo(aid)):0}
@@ -681,7 +688,7 @@ function weekCal(aid,startWs,weeks,editable){
     for(let i=0;i<7;i++){const d=addDays(ws,i);const p=planDay(aid,d);const l=logFor(aid,d);
       const shown=(l&&l.type)||(p&&p.type);
       const meta=[p&&drillCount(p.sections)?drillCount(p.sections)+(drillCount(p.sections)===1?' drill':' drills'):'',p&&p.rtt&&p.rtt.throws?p.rtt.throws+' thr · '+cellLoad(p,maxVelo(aid))+' pts':'',p&&p.throws?p.throws+' thr':'',p&&p.intensity?p.intensity+'%':'',l&&l.pitches?l.pitches+'p':'',l&&l.innings?l.innings+' IP':''].filter(Boolean).join(' · ');
-      h+=`<div class="d ${d===TODAY?'today':''}" data-day="${d}" data-aid="${aid}"><span class="dn">${md(d)}</span>${shown?chip(shown,l&&l.type&&p&&p.type&&l.type!==p.type?' *':''):'<span class="sub" style="font-size:11px">—</span>'}${meta?`<span class="meta mono">${esc(meta)}</span>`:''}${l&&l.checkin!=null?ciBadge(l.checkin):''}</div>`}
+      h+=`<div class="d ${d===TODAY?'today':''} ${p&&p.filled?'filled':''}" ${p&&p.filled?`title="Filled in: ${esc(p.why||'')}"`:''} data-day="${d}" data-aid="${aid}"><span class="dn">${md(d)}</span>${shown?chip(shown,l&&l.type&&p&&p.type&&l.type!==p.type?' *':''):'<span class="sub" style="font-size:11px">—</span>'}${meta?`<span class="meta mono">${esc(meta)}</span>`:''}${l&&l.checkin!=null?ciBadge(l.checkin):''}</div>`}
     const r=acwr(aid,ws);h+=`<div class="tot"><span class="num"><b>${weekLoad(aid,ws)}</b><span class="sub">/${weekLoad(aid,ws,'plan')}</span></span>${r.ratio!=null&&r.acute?`<span class="pill ${ratioCls(r.ratio)}">${r.ratio.toFixed(2)}</span>`:''}</div>`}
   return h+'</div>';
 }
@@ -691,7 +698,7 @@ function programTab(a){
   return `<div class="stack"><div class="panel"><div class="spread"><h2>Calendar</h2><div class="row"><button class="btn small" id="pPrev">← 4 wks</button><button class="btn small" id="pNow">This week</button><button class="btn small" id="pNext">4 wks →</button></div></div>
     <p class="sub" style="margin:-4px 0 10px;font-size:12.5px">Tap a day to see the plan or log what he did. * means he did something different from the plan.</p>
     <div style="overflow-x:auto">${weekCal(a.id,PWEEK,6)}</div></div>
-    <div class="panel"><h2>Programs</h2>${progs.length?`<div class="tbl-wrap"><table><thead><tr><th>Program</th><th>Dates</th><th class="r">Days</th><th></th></tr></thead><tbody>${progs.map(p=>`<tr><td><b>${esc(p.title)}</b>${p.source==='drive'?' <span class="pill">from Drive</span>':''}</td><td class="mono">${md(p.start_date)} – ${md(p.end_date)}</td><td class="r num">${Object.keys(p.days||{}).length}</td><td class="r"><button class="btn small" data-edit="${p.id}">Edit</button> <button class="btn small danger" data-delp="${p.id}">Delete</button></td></tr>`).join('')}</tbody></table></div>`:'<div class="empty">No programs yet.</div>'}</div></div>`;
+    <div class="panel"><h2>Programs</h2>${progs.length?`<div class="tbl-wrap"><table><thead><tr><th>Program</th><th>Dates</th><th class="r">Days</th><th></th></tr></thead><tbody>${progs.map(p=>`<tr><td><b>${esc(p.title)}</b>${p.source==='drive'?' <span class="pill">from Drive</span>':p.source==='filled'?' <span class="pill">filled in</span>':''}</td><td class="mono">${md(p.start_date)} – ${md(p.end_date)}</td><td class="r num">${Object.keys(p.days||{}).length}</td><td class="r"><button class="btn small" data-edit="${p.id}">Edit</button> <button class="btn small danger" data-delp="${p.id}">Delete</button></td></tr>`).join('')}</tbody></table></div>`:'<div class="empty">No programs yet.</div>'}</div></div>`;
 }
 function logTab(a){
   const logs=S.logs.filter(l=>l.athlete_id===a.id).sort((x,y)=>y.date.localeCompare(x.date));
@@ -934,6 +941,7 @@ function rttInputs(p,aid){const r=p.rtt;const mv=maxVelo(aid);
 function dayDrawer(aid,date){
   const a=athlete(aid);const p=planDay(aid,date);const card=p&&p.type&&((a.profile||{}).cards||{})[p.type];
   openLayer(`<div class="spread"><div><div class="eyebrow">${esc(a.nickname||a.name)}</div><h2>${dayName(date)} ${md(date)}</h2></div><button class="btn small ghost" id="dClose">Close</button></div>
+    ${p&&p.filled?`<div class="daynote"><b>Filled in</b><p>${esc(p.why||'Inferred from pitch data and his fall pattern.')} This day was blank in his schedule.</p></div>`:''}
     <div class="panel"><div class="eyebrow">Planned</div><div class="row" style="margin-top:6px">${chip(p&&p.type)}${p&&p.throws?`<span class="mono">${p.throws} throws</span>`:''}${p&&p.intensity?`<span class="mono">${p.intensity}%</span>`:''}</div>${p&&p.notes?`<p style="margin:8px 0 0">${esc(p.notes)}</p>`:''}${p?`<p class="sub" style="font-size:12px;margin:6px 0 0">${esc(p.program.title)}</p>`:''}</div>
     ${p?sectionsHtml(p):''}
     <button class="btn small" id="dEditDay">${p?'Edit this day’s plan':'Add a plan for this day'}</button>${p&&p.editedBy?`<span class="sub" style="font-size:12px">Edited by ${esc(p.editedBy===a.email?(a.nickname||a.name):'coach')} ${new Date(p.editedAt).toLocaleDateString()}</span>`:''}
