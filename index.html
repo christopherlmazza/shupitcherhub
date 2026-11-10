@@ -184,6 +184,7 @@ td.r,th.r{text-align:right}
 .login{max-width:420px;margin:8vh auto 0}
 .drow{display:grid;grid-template-columns:2fr .5fr .6fr 1fr 2fr auto;gap:4px;margin:4px 0}.drow input{padding:5px 6px;font-size:12.5px;min-width:0}
 .secbox{border:1px solid var(--line);border-radius:8px;padding:10px 12px}.secbox h3{font-size:15px}
+.cliprow{gap:6px}.cliprow .btn[disabled],.secbox .btn[disabled]{opacity:.4}
 .libchips{max-height:220px;overflow-y:auto}.libchip{border:1px solid var(--line);background:var(--soft);border-radius:999px;padding:3px 10px;margin:0 4px 4px 0;font-size:12px;cursor:pointer}.libchip:hover{border-color:var(--red)}
 .daynote{background:var(--red-soft);border-radius:8px;padding:10px 12px}.daynote b{font:600 12px var(--f-display);letter-spacing:.1em;text-transform:uppercase;color:var(--red)}.daynote p{margin:4px 0 0;white-space:pre-wrap}
 .sec-h{font:600 13px var(--f-display);letter-spacing:.1em;text-transform:uppercase}
@@ -952,6 +953,7 @@ async function learnDrills(sections){
   if(added||!Array.isArray(S.settings.drillLibrary)){lib.sort((a,b)=>a.name.localeCompare(b.name));await API.saveSetting('drillLibrary',lib)}
   return added;
 }
+let CLIP=null; /* {kind:'section'|'day', sec, label, items, notes, from} */
 const drillCount=sec=>sec?SECTIONS.reduce((n,[k])=>n+((sec[k]||[]).filter(d=>d.name).length),0):0;
 function sectionsHtml(day){
   const sec=day&&day.sections;if(!sec&&!(day&&day.dayNotes))return '';
@@ -964,7 +966,8 @@ function dayEditor(title,day,onSave,extraBtns){
   const draw=()=>{const lib=drillLib();
     openLayer(`<div class="spread"><div><div class="eyebrow">Program day</div><h2>${esc(title)}</h2></div><button class="btn small ghost" id="deClose">Close</button></div>
       <label class="f">Day notes (he sees these at the top of his day)<textarea id="deNotes" placeholder="e.g. Keep catch play loose, finish with 5 at 80%">${esc(d.dayNotes||'')}</textarea></label>
-      ${SECTIONS.map(([k,l])=>`<div class="secbox"><div class="spread"><h3>${l}</h3><button class="btn small" data-addd="${k}">Add drill</button></div>
+      <div class="row cliprow"><button class="btn small" id="cpDay">Copy whole day</button><button class="btn small" id="psDay" ${CLIP&&CLIP.kind==='day'?'':'disabled'}>Paste whole day${CLIP&&CLIP.kind==='day'?` <span class="sub">(${esc(CLIP.from)})</span>`:''}</button></div>
+      ${SECTIONS.map(([k,l])=>`<div class="secbox"><div class="spread"><h3>${l}</h3><div class="row" style="gap:4px"><button class="btn small ghost" data-cps="${k}" title="Copy ${l}">Copy</button><button class="btn small ghost" data-pss="${k}" ${CLIP&&CLIP.kind==='section'?'':'disabled'} title="${CLIP&&CLIP.kind==='section'?`Paste ${esc(CLIP.label)} from ${esc(CLIP.from)}`:'Copy a section first'}">Paste</button><button class="btn small" data-addd="${k}">Add drill</button></div></div>
         <input type="text" data-secnote="${k}" value="${esc(d.sections[k+'Notes']||'')}" placeholder="Notes for this section" style="width:100%;margin:6px 0">
         <div>${d.sections[k].map((e,i)=>`<div class="drow" data-sec="${k}" data-i="${i}"><input list="lib-all" data-f="name" value="${esc(e.name||'')}" placeholder="Drill (type to search or add new)"><input data-f="sets" value="${esc(e.sets??'')}" placeholder="Sets"><input data-f="reps" value="${esc(e.reps??'')}" placeholder="Reps"><input list="lib-balls" data-f="ball" value="${esc(e.ball??'')}" placeholder="Ball / weight"><input data-f="notes" value="${esc(e.notes??'')}" placeholder="Notes for this drill" class="dnote"><button class="btn small ghost" data-rmd="${k}|${i}" aria-label="Remove">✕</button></div>`).join('')}</div></div>`).join('')}
       <div class="secbox"><div class="spread"><h3>Drill library</h3><span class="sub" style="font-size:12px">${lib.length} drills · tap to add</span></div>
@@ -975,6 +978,11 @@ function dayEditor(title,day,onSave,extraBtns){
     const sync=()=>{d.dayNotes=$('#deNotes').value.trim();document.querySelectorAll('[data-secnote]').forEach(x=>d.sections[x.dataset.secnote+'Notes']=x.value.trim());
       document.querySelectorAll('.drow').forEach(r=>{const e=d.sections[r.dataset.sec][+r.dataset.i];r.querySelectorAll('input').forEach(x=>e[x.dataset.f]=x.value.trim()||null)})};
     $('#deClose').onclick=closeLayer;
+    const clean=arr=>JSON.parse(JSON.stringify((arr||[]).filter(e=>e.name)));
+    document.querySelectorAll('[data-cps]').forEach(b=>b.onclick=()=>{sync();const k=b.dataset.cps;CLIP={kind:'section',sec:k,label:SECLABEL[k],items:clean(d.sections[k]),notes:d.sections[k+'Notes']||'',from:title};toast(`Copied ${SECLABEL[k]} (${CLIP.items.length} drill${CLIP.items.length===1?'':'s'}). Open another day and tap Paste.`);draw()});
+    document.querySelectorAll('[data-pss]').forEach(b=>b.onclick=()=>{if(!CLIP||CLIP.kind!=='section')return;sync();const k=b.dataset.pss;d.sections[k]=JSON.parse(JSON.stringify(CLIP.items));if(CLIP.notes)d.sections[k+'Notes']=CLIP.notes;draw();toast(`Pasted ${CLIP.label} into ${SECLABEL[k]}. Tap Save day to keep it.`)});
+    $('#cpDay').onclick=()=>{sync();const secs={};SECTIONS.forEach(([k])=>{secs[k]=clean(d.sections[k]);if(d.sections[k+'Notes'])secs[k+'Notes']=d.sections[k+'Notes']});CLIP={kind:'day',sections:secs,dayNotes:d.dayNotes||'',from:title};toast('Copied the whole day. Open another day and tap Paste whole day.');draw()};
+    $('#psDay').onclick=()=>{if(!CLIP||CLIP.kind!=='day')return;d.sections=JSON.parse(JSON.stringify(CLIP.sections));SECTIONS.forEach(([k])=>d.sections[k]=d.sections[k]||[]);d.dayNotes=CLIP.dayNotes;draw();toast('Pasted the whole day. Tap Save day to keep it.')};
     document.querySelectorAll('[data-addd]').forEach(b=>b.onclick=()=>{sync();d.sections[b.dataset.addd].push({name:'',sets:null,reps:null,ball:null,notes:null});draw()});
     document.querySelectorAll('[data-rmd]').forEach(b=>b.onclick=()=>{sync();const [k,i]=b.dataset.rmd.split('|');d.sections[k].splice(+i,1);draw()});
     document.querySelectorAll('[data-lib]').forEach(b=>b.onclick=()=>{sync();const x=drillLib().find(y=>y.name===b.dataset.lib);d.sections[b.dataset.libsec].push({name:x.name,sets:null,reps:null,ball:null,notes:x.notes||null});draw()});
@@ -999,42 +1007,43 @@ function builderView(){
   const T=types();
   const first=[...BUILD.athletes][0];
   $('#app').innerHTML=`<div class="stack">
-    <div class="spread"><div><div class="eyebrow">${BUILD.editing?'Editing a program':'New program'}</div><h1>Build a throwing program</h1></div>
-      <div class="row"><button class="btn" id="bClear">Start over</button><button class="btn primary" id="bSave">${BUILD.editing?'Save changes':'Assign program'}</button></div></div>
+    <div class="spread"><div><div class="eyebrow">${BUILD.tpl?(BUILD.tpl.id?'Editing a template':'New template'):BUILD.editing?'Editing a program':'New program'}</div><h1>${BUILD.tpl?esc(BUILD.tpl.title||'New template'):'Build a throwing program'}</h1></div>
+      <div class="row"><button class="btn" id="bClear">${BUILD.tpl?'Leave template':'Start over'}</button><button class="btn primary" id="bSave">${BUILD.tpl?'Save template':BUILD.editing?'Save changes':'Assign program'}</button></div></div>
     <div class="panel stack">
       <div class="row" style="align-items:flex-end">
-        <label class="f" style="flex:2;min-width:220px">Program name<input type="text" id="bTitle" value="${esc(BUILD.title)}" placeholder="e.g. Ramp-up · Nov 9 – Dec 4"></label>
+        <label class="f" style="flex:2;min-width:220px">${BUILD.tpl?'Template name':'Program name'}<input type="text" id="bTitle" value="${esc(BUILD.tpl?BUILD.tpl.title:BUILD.title)}" placeholder="${BUILD.tpl?'e.g. Starter ramp-up week':'e.g. Ramp-up · Nov 9 – Dec 4'}"></label>
         <label class="f">Starts (Monday)<input type="date" id="bStart" value="${BUILD.start}"></label>
         <label class="f" style="width:110px">Weeks<input type="number" id="bWeeks" min="1" max="20" value="${BUILD.weeks}"></label>
       </div>
-      ${BUILD.editing?`<p class="sub" style="margin:0">Editing ${esc(athlete(first)?.name||'')}'s program.</p>`:`<div><div class="eyebrow" style="margin-bottom:8px">Assign to</div>
+      ${BUILD.tpl?`<p class="sub" style="margin:0">Templates aren't tied to dates or pitchers. The start date only labels the weeks while you build. Load it later from "Load a template…" and assign it to anyone.</p>`:BUILD.editing?`<p class="sub" style="margin:0">Editing ${esc(athlete(first)?.name||'')}'s program.</p>`:`<div><div class="eyebrow" style="margin-bottom:8px">Assign to</div>
         ${groups.map(([r,l])=>{const xs=S.athletes.filter(a=>(a.role||'')===r);if(!xs.length)return '';return `<div class="row" style="margin-bottom:8px;align-items:flex-start"><button class="btn small ghost" data-grp="${r}" style="width:104px;justify-content:flex-start">${l}</button><div class="athlete-pick" style="flex:1">${xs.map(a=>`<label class="${BUILD.athletes.has(a.id)?'on':''}"><input type="checkbox" value="${a.id}" ${BUILD.athletes.has(a.id)?'checked':''}>${esc(a.nickname||a.name)}</label>`).join('')}</div></div>`}).join('')}</div>`}
     </div>
     <div class="panel stack">
       <div class="spread"><h2>Week by week</h2>
         <div class="row">
-          <select id="bTpl"><option value="">Load a template…</option>${S.templates.map(t=>`<option value="${t.id}">${esc(t.title)} (${t.weeks.length} wk)</option>`).join('')}${S.athletes.filter(a=>S.programs.some(p=>p.athlete_id===a.id)).map(a=>`<option value="copy:${a.id}">Copy ${esc(a.nickname||a.name)}'s plan from this start date</option>`).join('')}</select>
+          <select id="bTpl"><option value="">Load a template…</option>${S.templates.map(t=>`<option value="${t.id}">${esc(t.title)} (${t.weeks.length} wk)</option>`).join('')}<option value="__new">＋ Create new template</option></select>
           <button class="btn small" id="bRepeat">Repeat week 1 down</button><button class="btn small" id="bSaveTpl">Save as template</button></div></div>
       <div class="legend">${T.map(t=>`<span class="chip ${tcls(t.name)}">${esc(t.name)} · ${t.load}</span>`).join('')}</div>
       <p class="sub" style="margin:0;font-size:12.5px">Pick each day's type. Throws and effort % are optional targets the pitcher sees on his Today screen. Numbers on the right are workload points (same scale as the sheets) and, when a pitcher is selected, his projected ratio including his history.</p>
       <div style="overflow-x:auto"><div class="bgrid" id="bgrid"></div></div>
     </div></div>`;
   drawBuilderGrid();
-  $('#bTitle').oninput=e=>BUILD.title=e.target.value;
+  $('#bTitle').oninput=e=>{if(BUILD.tpl)BUILD.tpl.title=e.target.value;else BUILD.title=e.target.value};
   $('#bStart').onchange=e=>{BUILD.start=monday(e.target.value||TODAY);builderView()};
   $('#bWeeks').onchange=e=>{BUILD.weeks=Math.max(1,Math.min(20,+e.target.value||1));builderView()};
   document.querySelectorAll('.athlete-pick input').forEach(i=>i.onchange=()=>{i.checked?BUILD.athletes.add(i.value):BUILD.athletes.delete(i.value);i.parentElement.classList.toggle('on',i.checked);drawBuilderGrid()});
   document.querySelectorAll('[data-grp]').forEach(b=>b.onclick=()=>{const xs=S.athletes.filter(a=>(a.role||'')===b.dataset.grp);const all=xs.every(a=>BUILD.athletes.has(a.id));xs.forEach(a=>all?BUILD.athletes.delete(a.id):BUILD.athletes.add(a.id));builderView()});
   $('#bRepeat').onclick=()=>{BUILD.grid=BUILD.grid.map((w,i)=>i===0?w:JSON.parse(JSON.stringify(BUILD.grid[0])));drawBuilderGrid()};
-  $('#bClear').onclick=()=>{Object.assign(BUILD,{athletes:new Set(),title:'',start:monday(TODAY),weeks:4,grid:null,editing:null});builderView()};
+  $('#bClear').onclick=()=>{Object.assign(BUILD,{athletes:new Set(),title:'',start:monday(TODAY),weeks:4,grid:null,editing:null,tpl:null});builderView()};
   $('#bTpl').onchange=e=>{const v=e.target.value;if(!v)return;
-    if(v.startsWith('copy:')){const aid=v.slice(5);BUILD.grid=BUILD.grid.map((w,k)=>w.map((c,i)=>{const p=planDay(aid,addDays(BUILD.start,7*k+i));return p?{type:p.type||'',throws:p.throws??null,intensity:p.intensity??null,notes:p.notes||'',sections:p.sections?JSON.parse(JSON.stringify(p.sections)):undefined,dayNotes:p.dayNotes||''}:{type:'',throws:null,intensity:null,notes:''}}))}
-    else{const t=S.templates.find(x=>x.id===v);BUILD.weeks=t.weeks.length;BUILD.grid=JSON.parse(JSON.stringify(t.weeks));if(!BUILD.title)BUILD.title=t.title}
-    builderView()};
-  $('#bSaveTpl').onclick=()=>{openLayer(`<h2>Save as template</h2><label class="f">Template name<input type="text" id="tplName" value="${esc(BUILD.title)}"></label><div class="row"><button class="btn primary" id="tplGo">Save template</button><button class="btn" id="tplNo">Cancel</button></div>${S.templates.length?`<h3>Saved templates</h3>${S.templates.map(t=>`<div class="spread"><span>${esc(t.title)}</span><button class="btn small danger" data-deltpl="${t.id}">Delete</button></div>`).join('')}`:''}`);
+    if(v==='__new'){e.target.value='';newTemplate();return}
+    const t=S.templates.find(x=>x.id===v);BUILD.weeks=t.weeks.length;BUILD.grid=JSON.parse(JSON.stringify(t.weeks));if(!BUILD.title)BUILD.title=t.title;
+    toast(`Loaded "${t.title}". Pick pitchers and a start date, then assign.`);builderView()};
+  $('#bSaveTpl').onclick=()=>{openLayer(`<h2>Save as template</h2><label class="f">Template name<input type="text" id="tplName" value="${esc(BUILD.title)}"></label><div class="row"><button class="btn primary" id="tplGo">Save template</button><button class="btn" id="tplNo">Cancel</button></div>${S.templates.length?`<h3>Saved templates</h3>${S.templates.map(t=>`<div class="spread"><span>${esc(t.title)} <span class="sub">(${t.weeks.length} wk)</span></span><span class="row"><button class="btn small" data-edtpl="${t.id}">Edit</button><button class="btn small danger" data-deltpl="${t.id}">Delete</button></span></div>`).join('')}`:''}`);
+    document.querySelectorAll('[data-edtpl]').forEach(b=>b.onclick=()=>{const t=S.templates.find(x=>x.id===b.dataset.edtpl);closeLayer();Object.assign(BUILD,{tpl:{id:t.id,title:t.title},weeks:t.weeks.length,grid:JSON.parse(JSON.stringify(t.weeks)),editing:null,athletes:new Set()});builderView()});
     $('#tplNo').onclick=closeLayer;$('#tplGo').onclick=async()=>{const title=$('#tplName').value.trim();if(!title){toast('Give the template a name');return}await API.saveTemplate({id:uid(),title,weeks:JSON.parse(JSON.stringify(BUILD.grid)),created_at:new Date().toISOString()});closeLayer();toast('Template saved');builderView()};
     document.querySelectorAll('[data-deltpl]').forEach(b=>b.onclick=async()=>{await API.deleteTemplate(b.dataset.deltpl);closeLayer();toast('Template deleted');builderView()})};
-  $('#bSave').onclick=saveBuild;
+  $('#bSave').onclick=BUILD.tpl?saveTemplateFromBuilder:saveBuild;
 }
 function drawBuilderGrid(){
   const T=types();const first=[...BUILD.athletes][0];
@@ -1059,6 +1068,23 @@ function drawBuilderGrid(){
     dayEditor(`${dayName(d)} ${md(d)}${c.type?' · '+c.type:''}`,c,async(day)=>{c.sections=day.sections;c.dayNotes=day.dayNotes;drawBuilderGrid()},
       `${c.type?`<button class="btn" data-extra="copytype">Save to every ${esc(c.type)} day</button>`:''}<button class="btn" data-extra="copyweek">Save to every ${DAYS[i]}</button>`)});
   document.querySelectorAll('#bgrid [data-f]').forEach(el=>{const ev=el.tagName==='SELECT'?'change':'input';el.addEventListener(ev,()=>{const c=BUILD.grid[+el.dataset.k][+el.dataset.i];const f=el.dataset.f;if(f==='throws'&&c.rtt){c.rtt.throws=num(el.value)||0}else c[f]=f==='type'||f==='notes'?el.value:num(el.value);if(f==='type'&&el.value!==RTT)delete c.rtt;drawBuilderGrid()})});
+}
+function newTemplate(){
+  openLayer(`<h2>New template</h2><p class="sub" style="margin:0">Build a reusable plan (a week, a ramp-up, a return-to-throw block) and load it onto any pitcher later.</p>
+    <label class="f">Template name<input type="text" id="ntName" placeholder="e.g. Starter 5-day week"></label>
+    <label class="f">Weeks<input type="number" id="ntWeeks" min="1" max="20" value="1"></label>
+    <label class="f">Start from<select id="ntFrom"><option value="blank">A blank grid</option><option value="grid">What's in the builder right now</option></select></label>
+    <div class="row"><button class="btn primary" id="ntGo">Start building</button><button class="btn" id="ntNo">Cancel</button></div>`);
+  $('#ntNo').onclick=closeLayer;
+  $('#ntGo').onclick=()=>{const title=$('#ntName').value.trim()||'New template';const n=Math.max(1,Math.min(20,+$('#ntWeeks').value||1));const keep=$('#ntFrom').value==='grid'&&BUILD.grid;
+    const g=keep?JSON.parse(JSON.stringify(BUILD.grid)).slice(0,n):blankGrid(n);while(g.length<n)g.push(blankGrid(1)[0]);
+    Object.assign(BUILD,{tpl:{id:null,title},weeks:n,grid:g,editing:null,athletes:new Set()});closeLayer();builderView()};
+}
+async function saveTemplateFromBuilder(){
+  const t=BUILD.tpl;const title=(t.title||'').trim();if(!title){toast('Give the template a name');return}
+  const weeks=JSON.parse(JSON.stringify(BUILD.grid));
+  try{await API.saveTemplate({id:t.id||uid(),title,weeks,created_at:new Date().toISOString()});toast(t.id?'Template updated':'Template saved');
+    Object.assign(BUILD,{tpl:null,grid:null,title:'',weeks:4});builderView()}catch(e){toast(e.message)}
 }
 async function saveBuild(){
   const ids=[...BUILD.athletes];if(!ids.length){toast('Pick at least one pitcher');return}
