@@ -1211,7 +1211,6 @@ function athleteToday(aid){
         ${p&&p.notes?`<p style="margin:0"><b>Coach:</b> ${esc(p.notes)}</p>`:''}
         ${p?sectionsHtml(p):''}
         ${p&&p.rtt?rttDetailHtml(p,aid):''}
-        ${(prof.warmup||[]).length?`<details><summary><b>Warm up / everydays</b></summary><div class="excard" style="margin-top:8px"><div class="exs">${prof.warmup.map(e=>`<div class="ex"><span class="nm">${esc(e.name)}</span><span class="dose">${esc([e.sets!=null?e.sets+'×':'',e.reps??''].join(''))}</span></div>`).join('')}</div></div>${prof.warmupNote?`<p class="sub" style="font-size:13px">${esc(prof.warmupNote)}</p>`:''}</details>`:''}
       </div>
       <div class="panel stack"><div class="spread"><h2>${logged?'Today’s log':'Log today'}</h2>${logged?'<span class="pill good">Logged</span>':''}</div>${logForm(aid,TODAY,'tl')}<button class="btn primary" id="tSave">${logged?'Update log':'Save log'}</button></div>
     </div>
