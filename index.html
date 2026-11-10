@@ -138,12 +138,23 @@ td.r,th.r{text-align:right}
 .cal .tot{padding:8px 4px;font-size:12px;display:flex;flex-direction:column;gap:4px}
 
 /* builder grid */
-.bgrid{display:grid;grid-template-columns:70px repeat(7,minmax(108px,1fr)) 92px;gap:4px;min-width:960px}
-.bcell{background:var(--soft);border-radius:7px;padding:6px;display:flex;flex-direction:column;gap:4px;border-top:4px solid var(--t-rest)}
-.bcell select{padding:4px 6px;font-size:12.5px;font-weight:600}
-.bcell .mini{display:flex;gap:4px}
-.bcell .mini input{width:100%;padding:3px 5px;font-size:12px;font-family:var(--f-mono)}
-.bcell.out{opacity:.55}
+.bgrid{display:grid;grid-template-columns:58px repeat(7,minmax(112px,1fr)) 70px;gap:6px;min-width:920px;align-items:stretch}
+.bgrid .bh{font:600 12px var(--f-display);letter-spacing:.1em;text-transform:uppercase;color:var(--muted);padding:2px 4px}
+.bgrid .wk{font-size:11.5px;color:var(--muted);padding:8px 0}.bgrid .tot{display:flex;flex-direction:column;gap:4px;padding:8px 0;font-size:12px}
+.bday{all:unset;box-sizing:border-box;cursor:pointer;display:flex;flex-direction:column;gap:4px;padding:7px 8px;min-height:92px;border-radius:8px;background:var(--panel);border:1px solid var(--line);border-top:4px solid var(--tc);font-size:12px;min-width:0}
+.bday:hover{border-color:var(--muted);border-top-color:var(--tc)}.bday:focus-visible{outline:2px solid var(--red);outline-offset:2px}
+.bday.empty{background:var(--soft);border-style:dashed;border-top-style:solid}.bd-top{display:flex;justify-content:space-between;gap:4px;color:var(--muted);font-size:11px}
+.bd-mark{color:var(--red);font:600 10px var(--f-display);letter-spacing:.06em;text-transform:uppercase;text-align:right}.bd-add{color:var(--muted);font-size:18px;line-height:1}
+.bd-meta{font-size:11px;color:var(--muted)}.pv{display:block;font-size:11.5px;line-height:1.3;overflow:hidden;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical}.pv b{font:600 10px var(--f-display);letter-spacing:.08em;text-transform:uppercase;color:var(--red);margin-right:3px}
+.de{display:flex;flex-direction:column;gap:12px}.de-head{display:flex;justify-content:space-between;align-items:center;gap:8px}.de-num{width:96px}.de-hint{margin:0;font-size:12px}
+.de-sec{border:1px solid var(--line);border-radius:8px;overflow:hidden}.de-sec.open{border-color:var(--muted)}
+.de-sech{all:unset;box-sizing:border-box;cursor:pointer;width:100%;display:flex;justify-content:space-between;align-items:center;padding:9px 12px;font:600 14px var(--f-display);letter-spacing:.08em;text-transform:uppercase;background:var(--soft)}
+.de-sech .sub{font:12px var(--f-body);letter-spacing:0;text-transform:none}
+.de-sec textarea{display:block;width:100%;border:0;border-radius:0;border-top:1px solid var(--line);padding:10px 12px;font:14px/1.5 var(--f-body);resize:vertical;min-height:0}
+.de-tools{display:flex;gap:2px;flex-wrap:wrap;padding:4px 6px;border-top:1px solid var(--line)}.de-tools .btn[disabled]{opacity:.4}
+.de-lib{padding:8px 10px;border-top:1px solid var(--line);display:flex;flex-direction:column;gap:6px}.de-lib input{width:100%}
+.de-foot{position:sticky;bottom:calc(-20px - env(safe-area-inset-bottom,0px));background:var(--panel);padding:10px 0 4px;display:flex;gap:8px;flex-wrap:wrap;align-items:center;border-top:1px solid var(--line)}
+.de-more summary{cursor:pointer;color:var(--muted);font-size:13px}
 .athlete-pick{display:flex;flex-wrap:wrap;gap:6px}
 .athlete-pick label{display:inline-flex;align-items:center;gap:6px;border:1px solid var(--line);border-radius:999px;padding:4px 11px;font-size:12.5px;cursor:pointer;background:var(--panel)}
 .athlete-pick input{accent-color:var(--red)}
@@ -176,7 +187,7 @@ td.r,th.r{text-align:right}
 
 /* drawer / toast */
 .scrim{position:fixed;inset:0;background:rgba(0,0,0,.35);z-index:40}
-.drawer{position:fixed;top:0;right:0;bottom:0;width:min(440px,100%);background:var(--panel);z-index:41;padding:20px;padding-top:calc(20px + env(safe-area-inset-top,0px));padding-bottom:calc(20px + env(safe-area-inset-bottom,0px));padding-right:max(20px,env(safe-area-inset-right,0px));overflow-y:auto;display:flex;flex-direction:column;gap:14px;border-left:1px solid var(--line)}
+.drawer{position:fixed;top:0;right:0;bottom:0;width:min(560px,100%);background:var(--panel);z-index:41;padding:20px;padding-top:calc(20px + env(safe-area-inset-top,0px));padding-bottom:calc(20px + env(safe-area-inset-bottom,0px));padding-right:max(20px,env(safe-area-inset-right,0px));overflow-y:auto;display:flex;flex-direction:column;gap:14px;border-left:1px solid var(--line)}
 .toast{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(20px + env(safe-area-inset-bottom,0px));background:var(--ink);color:var(--bg);padding:10px 16px;border-radius:8px;z-index:50;font-size:13px;max-width:calc(100% - 32px)}
 .empty{padding:26px;text-align:center;color:var(--muted);border:1px dashed var(--line);border-radius:8px}
 .tabs{display:flex;gap:2px;border-bottom:1px solid var(--line);overflow-x:auto}
@@ -1191,38 +1202,65 @@ function sectionsHtml(day){
   return `${day.dayNotes?`<div class="daynote"><b>Coach notes</b><p>${esc(day.dayNotes)}</p></div>`:''}${SECTIONS.filter(([k])=>sec&&(sec[k]||[]).some(d=>d.name)||(sec&&sec[k+'Notes'])).map(([k,l])=>`<div class="excard"><header><b class="sec-h">${l}</b>${sec[k+'Notes']&&(sec[k]||[]).some(d=>d.name)?`<span class="sub" style="font-size:12.5px">${esc(sec[k+'Notes'])}</span>`:''}</header><div class="exs">${sec[k+'Notes']&&!(sec[k]||[]).some(d=>d.name)?`<p style="margin:8px 0;white-space:pre-wrap">${esc(sec[k+'Notes'])}</p>`:''}${(sec[k]||[]).filter(d=>d.name).map(e=>`<div class="ex"><span class="nm">${esc(e.name)}</span><span class="dose">${esc([e.sets?e.sets+'×':'',e.reps||'',e.ball?' · '+e.ball:''].join(''))}</span>${e.notes?`<span class="nt">${esc(e.notes)}</span>`:''}</div>`).join('')}</div></div>`).join('')}`;
 }
 /* Day editor: drills by section, notes per drill, notes per section, overall day notes. onSave(day) persists it. */
-function dayEditor(title,day,onSave,extraBtns){
-  const d=JSON.parse(JSON.stringify(day||{}));d.sections=d.sections||{};SECTIONS.forEach(([k])=>d.sections[k]=d.sections[k]||[]);
-  let filter='';
+/* ---------- one drill per line ⇄ structured drills ----------
+   "Band series 2x10 - slow tempo"  → {name:"Band series", sets:2, reps:"10", notes:"slow tempo"}
+   "Scoop toss 6 lb 2x5 each"       → {name:"Scoop toss", ball:"6 lb", sets:2, reps:"5 each"}
+   "Note: max intent today"          → section note */
+function lineToDrill(line){
+  let t=line.trim().replace(/^[-•*]\s*/,'');if(!t)return null;let notes=null;
+  const sp=t.split(/\s+[—–-]\s+/);if(sp.length>1){t=sp.shift().trim();notes=sp.join(' - ').trim()}
+  let sets=null,reps=null,ball=null,m;
+  if((m=t.match(/\b(\d+)\s*[x×]\s*(\d+(?:\s*-\s*\d+)?(?:\s*(?:each|ea|e\/s|per side|sec|secs|s|min|mins|ft|yd|yds|throws))?)\b/i))){sets=+m[1];reps=m[2].replace(/\s+/g,' ').trim();t=(t.slice(0,m.index)+t.slice(m.index+m[0].length))}
+  if((m=t.match(/\b(\d+(?:\.\d+)?\s*(?:oz|lb|lbs|kg|g))\b/i))){ball=m[1].replace(/\s+/,' ');t=(t.slice(0,m.index)+t.slice(m.index+m[0].length))}
+  const name=t.replace(/\s{2,}/g,' ').replace(/[,·@]\s*$/,'').trim()||line.trim();
+  return {name,sets,reps,ball,notes};
+}
+const drillToLine=e=>[e.name,e.ball,e.sets&&e.reps?`${e.sets}x${e.reps}`:(e.reps||(e.sets?e.sets+' sets':''))].filter(Boolean).join(' ')+(e.notes?` - ${e.notes}`:'');
+function secToText(sec,k){return [...(sec[k]||[]).filter(e=>e.name).map(drillToLine),...(sec[k+'Notes']?['Note: '+sec[k+'Notes']]:[])].join('\n')}
+function textToSec(txt){const items=[],notes=[];for(const ln of String(txt||'').split('\n')){const m=ln.match(/^\s*notes?\s*:\s*(.*)$/i);if(m){if(m[1].trim())notes.push(m[1].trim());continue}const d=lineToDrill(ln);if(d)items.push(d)}return {items,note:notes.join(' ')}}
+
+/* Day editor. opts.nav(dir) moves to the previous/next day (builder only); the current day is saved first. */
+function dayEditor(title,day,onSave,extraBtns,opts={}){
+  const d=JSON.parse(JSON.stringify(day||{}));d.sections=d.sections||{};
+  const txt=Object.fromEntries(SECTIONS.map(([k])=>[k,secToText(d.sections,k)]));
+  let open=new Set(SECTIONS.filter(([k])=>txt[k]).map(([k])=>k));if(!open.size)open=new Set(['prework','throwing']);
+  let libSec=null,libQ='';
+  const collect=()=>{d.type=($('#deTypes .on')||{}).dataset?.v||null;d.throws=num($('#deThr').value);d.intensity=num($('#deInt').value);d.dayNotes=$('#deNotes').value.trim();
+    document.querySelectorAll('[data-sectxt]').forEach(x=>txt[x.dataset.sectxt]=x.value);
+    const secs={};SECTIONS.forEach(([k])=>{const r=textToSec(txt[k]);secs[k]=r.items;if(r.note)secs[k+'Notes']=r.note});d.sections=secs;return d};
   const draw=()=>{const lib=drillLib();
-    openLayer(`<div class="spread"><div><div class="eyebrow">Program day</div><h2>${esc(title)}</h2></div><button class="btn small ghost" id="deClose">Close</button></div>
-      <div class="row"><label class="f" style="flex:1;min-width:150px">Day type<select id="deType"><option value="">—</option>${types().map(t=>`<option ${d.type===t.name?'selected':''}>${esc(t.name)}</option>`).join('')}</select></label>
-        <label class="f" style="width:100px">Throws<input type="number" min="0" id="deThr" value="${d.throws??''}"></label><label class="f" style="width:100px">Effort %<input type="number" min="0" max="100" id="deInt" value="${d.intensity??''}"></label></div>
-      <label class="f">Day notes (shown at the top of the day)<textarea id="deNotes" placeholder="e.g. Keep catch play loose, finish with 5 at 80%">${esc(d.dayNotes||'')}</textarea></label>
-      <div class="row cliprow"><button class="btn small" id="cpDay">Copy whole day</button><button class="btn small" id="psDay" ${CLIP&&CLIP.kind==='day'?'':'disabled'}>Paste whole day${CLIP&&CLIP.kind==='day'?` <span class="sub">(${esc(CLIP.from)})</span>`:''}</button></div>
-      ${SECTIONS.map(([k,l])=>`<div class="secbox"><div class="spread"><h3>${l}</h3><div class="row" style="gap:4px"><button class="btn small ghost" data-cps="${k}" title="Copy ${l}">Copy</button><button class="btn small ghost" data-pss="${k}" ${CLIP&&CLIP.kind==='section'?'':'disabled'} title="${CLIP&&CLIP.kind==='section'?`Paste ${esc(CLIP.label)} from ${esc(CLIP.from)}`:'Copy a section first'}">Paste</button><button class="btn small" data-addd="${k}">Add drill</button></div></div>
-        <input type="text" data-secnote="${k}" value="${esc(d.sections[k+'Notes']||'')}" placeholder="Notes for this section" style="width:100%;margin:6px 0">
-        <div>${d.sections[k].map((e,i)=>`<div class="drow" data-sec="${k}" data-i="${i}"><input list="lib-all" data-f="name" value="${esc(e.name||'')}" placeholder="Drill (type to search or add new)"><input data-f="sets" value="${esc(e.sets??'')}" placeholder="Sets"><input data-f="reps" value="${esc(e.reps??'')}" placeholder="Reps"><input list="lib-balls" data-f="ball" value="${esc(e.ball??'')}" placeholder="Ball / weight"><input data-f="notes" value="${esc(e.notes??'')}" placeholder="Notes for this drill" class="dnote"><button class="btn small ghost" data-rmd="${k}|${i}" aria-label="Remove">✕</button></div>`).join('')}</div></div>`).join('')}
-      <div class="secbox"><div class="spread"><h3>Drill library</h3><span class="sub" style="font-size:12px">${lib.length} drills · tap to add</span></div>
-        <input type="text" id="libFilter" value="${esc(filter)}" placeholder="Search drills" style="width:100%;margin:6px 0">
-        <div class="libchips">${SECTIONS.map(([k,l])=>{const xs=lib.filter(x=>x.section===k&&(!filter||x.name.toLowerCase().includes(filter.toLowerCase()))).slice(0,40);return xs.length?`<div><div class="eyebrow" style="margin:6px 0 4px">${l}</div>${xs.map(x=>`<button class="libchip" data-lib="${esc(x.name)}" data-libsec="${k}" title="${esc(x.notes||'')}">${esc(x.name)}</button>`).join('')}</div>`:''}).join('')}</div></div>
-      <datalist id="lib-all">${lib.map(x=>`<option value="${esc(x.name)}">`).join('')}</datalist><datalist id="lib-balls">${((S.settings.library||{}).ballWeights||[]).concat((S.settings.library||{}).veloWeights||[]).map(x=>`<option value="${esc(x)}">`).join('')}</datalist>
-      <div class="row"><button class="btn primary" id="deSave">Save day</button>${extraBtns||''}</div>`);
-    const sync=()=>{d.dayNotes=$('#deNotes').value.trim();d.type=$('#deType').value||null;d.throws=num($('#deThr').value);d.intensity=num($('#deInt').value);document.querySelectorAll('[data-secnote]').forEach(x=>d.sections[x.dataset.secnote+'Notes']=x.value.trim());
-      document.querySelectorAll('.drow').forEach(r=>{const e=d.sections[r.dataset.sec][+r.dataset.i];r.querySelectorAll('input').forEach(x=>e[x.dataset.f]=x.value.trim()||null)})};
+    openLayer(`<div class="de">
+      <div class="de-head"><div class="row" style="gap:6px;flex-wrap:nowrap">${opts.nav?'<button class="btn small" id="dePrev" aria-label="Previous day">◀</button>':''}<h2 style="margin:0">${esc(title)}</h2>${opts.nav?'<button class="btn small" id="deNext" aria-label="Next day">▶</button>':''}</div><button class="btn small ghost" id="deClose">Close</button></div>
+      <div class="typepick" id="deTypes">${types().map(t=>`<button type="button" class="chip ${tcls(t.name)} ${d.type===t.name?'on':''}" data-v="${esc(t.name)}">${esc(t.name)}</button>`).join('')}</div>
+      <div class="row" style="gap:8px"><label class="f de-num">Throws<input type="number" min="0" id="deThr" value="${d.throws??''}" inputmode="numeric"></label><label class="f de-num">Effort %<input type="number" min="0" max="100" id="deInt" value="${d.intensity??''}" inputmode="numeric"></label>
+        <label class="f" style="flex:1;min-width:180px">Day notes<input type="text" id="deNotes" value="${esc(d.dayNotes||'')}" placeholder="Shown at the top of his day"></label></div>
+      <p class="sub de-hint">One drill per line, like <span class="mono">Band series 2x10 - slow tempo</span>. Start a line with <span class="mono">Note:</span> for a section note.</p>
+      ${SECTIONS.map(([k,l])=>{const isOpen=open.has(k);const n=textToSec(txt[k]).items.length;return `<section class="de-sec ${isOpen?'open':''}">
+        <button type="button" class="de-sech" data-tog="${k}"><span>${l}</span><span class="sub">${n?n+(n===1?' drill':' drills'):(isOpen?'':'+ add')}</span></button>
+        ${isOpen?`<textarea data-sectxt="${k}" rows="${Math.max(2,txt[k].split('\n').length+1)}" placeholder="${{prework:'Band series 2x10\\nHip mobility series',plyo:'Reverse throws 2x8 - 450g\\nPivot pickoffs 2x8',throwing:'Catch play out to 120 ft - 40 throws\\nNote: stay loose, no max effort',medball:'Scoop toss 6 lb 2x5 each',focus:'25-pitch pen: 15 FB, 10 SL\\nNote: attack glove side'}[k]}">${esc(txt[k])}</textarea>
+          <div class="de-tools"><button type="button" class="btn small ghost" data-lib="${k}">${libSec===k?'Hide library':'＋ From library'}</button><button type="button" class="btn small ghost" data-cps="${k}">Copy</button><button type="button" class="btn small ghost" data-pss="${k}" ${CLIP&&CLIP.kind==='section'?'':'disabled'}>Paste${CLIP&&CLIP.kind==='section'?' '+esc(CLIP.label):''}</button></div>
+          ${libSec===k?`<div class="de-lib"><input type="text" id="libQ" value="${esc(libQ)}" placeholder="Search ${lib.length} drills"><div class="libchips">${lib.filter(x=>(libQ?x.name.toLowerCase().includes(libQ.toLowerCase()):x.section===k)).slice(0,60).map(x=>`<button type="button" class="libchip" data-libadd="${esc(x.name)}" title="${esc(x.notes||'')}">${esc(x.name)}</button>`).join('')||'<span class="sub">No matches. Just type it in; new drills save to the library.</span>'}</div></div>`:''}`:''}
+      </section>`}).join('')}
+      <div class="de-foot"><button class="btn primary" id="deSave">Save day</button>${opts.nav?'<button class="btn" id="deSaveNext">Save & next day ▶</button>':''}
+        <details class="de-more"><summary>More</summary><div class="row" style="gap:6px;margin-top:6px"><button class="btn small" id="cpDay">Copy whole day</button><button class="btn small" id="psDay" ${CLIP&&CLIP.kind==='day'?'':'disabled'}>Paste whole day</button>${extraBtns||''}</div></details></div>
+    </div>`);
+    const save=async()=>{collect();try{const n=await learnDrills(d.sections);await onSave(d);return n}catch(e){toast(e.message);throw e}};
     $('#deClose').onclick=closeLayer;
-    const clean=arr=>JSON.parse(JSON.stringify((arr||[]).filter(e=>e.name)));
-    document.querySelectorAll('[data-cps]').forEach(b=>b.onclick=()=>{sync();const k=b.dataset.cps;CLIP={kind:'section',sec:k,label:SECLABEL[k],items:clean(d.sections[k]),notes:d.sections[k+'Notes']||'',from:title};toast(`Copied ${SECLABEL[k]} (${CLIP.items.length} drill${CLIP.items.length===1?'':'s'}). Open another day and tap Paste.`);draw()});
-    document.querySelectorAll('[data-pss]').forEach(b=>b.onclick=()=>{if(!CLIP||CLIP.kind!=='section')return;sync();const k=b.dataset.pss;d.sections[k]=JSON.parse(JSON.stringify(CLIP.items));if(CLIP.notes)d.sections[k+'Notes']=CLIP.notes;draw();toast(`Pasted ${CLIP.label} into ${SECLABEL[k]}. Tap Save day to keep it.`)});
-    $('#cpDay').onclick=()=>{sync();const secs={};SECTIONS.forEach(([k])=>{secs[k]=clean(d.sections[k]);if(d.sections[k+'Notes'])secs[k+'Notes']=d.sections[k+'Notes']});CLIP={kind:'day',sections:secs,dayNotes:d.dayNotes||'',from:title};toast('Copied the whole day. Open another day and tap Paste whole day.');draw()};
-    $('#psDay').onclick=()=>{if(!CLIP||CLIP.kind!=='day')return;d.sections=JSON.parse(JSON.stringify(CLIP.sections));SECTIONS.forEach(([k])=>d.sections[k]=d.sections[k]||[]);d.dayNotes=CLIP.dayNotes;draw();toast('Pasted the whole day. Tap Save day to keep it.')};
-    document.querySelectorAll('[data-addd]').forEach(b=>b.onclick=()=>{sync();d.sections[b.dataset.addd].push({name:'',sets:null,reps:null,ball:null,notes:null});draw()});
-    document.querySelectorAll('[data-rmd]').forEach(b=>b.onclick=()=>{sync();const [k,i]=b.dataset.rmd.split('|');d.sections[k].splice(+i,1);draw()});
-    document.querySelectorAll('[data-lib]').forEach(b=>b.onclick=()=>{sync();const x=drillLib().find(y=>y.name===b.dataset.lib);d.sections[b.dataset.libsec].push({name:x.name,sets:null,reps:null,ball:null,notes:x.notes||null});draw()});
-    document.querySelectorAll('.drow [data-f=name]').forEach(inp=>inp.onchange=()=>{const x=drillLib().find(y=>y.name.toLowerCase()===inp.value.trim().toLowerCase());const nt=inp.parentElement.querySelector('[data-f=notes]');if(x&&x.notes&&!nt.value)nt.value=x.notes});
-    const lf=$('#libFilter');lf.oninput=()=>{sync();filter=lf.value;draw();const n=$('#libFilter');n.focus();n.setSelectionRange(n.value.length,n.value.length)};
-    $('#deSave').onclick=async()=>{sync();SECTIONS.forEach(([k])=>d.sections[k]=d.sections[k].filter(e=>e.name));try{const n=await learnDrills(d.sections);await onSave(d);closeLayer();toast(n?`Saved · ${n} new drill${n>1?'s':''} added to the library`:'Saved')}catch(e){toast(e.message)}};
-    document.querySelectorAll('[data-extra]').forEach(b=>b.onclick=async()=>{sync();SECTIONS.forEach(([k])=>d.sections[k]=d.sections[k].filter(e=>e.name));await learnDrills(d.sections);await window['__extra_'+b.dataset.extra](d)});
+    document.querySelectorAll('#deTypes button').forEach(b=>b.onclick=()=>{const was=b.classList.contains('on');document.querySelectorAll('#deTypes button').forEach(x=>x.classList.remove('on'));if(!was)b.classList.add('on')});
+    document.querySelectorAll('[data-tog]').forEach(b=>b.onclick=()=>{collect();const k=b.dataset.tog;open.has(k)?(txt[k].trim()?null:open.delete(k)):open.add(k);if(!open.has(k)&&libSec===k)libSec=null;draw();const ta=document.querySelector(`[data-sectxt="${k}"]`);if(ta){ta.focus();ta.setSelectionRange(ta.value.length,ta.value.length)}});
+    document.querySelectorAll('[data-sectxt]').forEach(ta=>ta.oninput=()=>{ta.rows=Math.max(2,ta.value.split('\n').length+1)});
+    document.querySelectorAll('[data-lib]').forEach(b=>b.onclick=()=>{collect();libSec=libSec===b.dataset.lib?null:b.dataset.lib;libQ='';draw()});
+    document.querySelectorAll('[data-libadd]').forEach(b=>b.onclick=()=>{collect();const x=drillLib().find(y=>y.name===b.dataset.libadd);const k=libSec;txt[k]=(txt[k].trim()?txt[k].replace(/\s*$/,'')+'\n':'')+x.name+(x.notes?' - '+x.notes:'');draw()});
+    const q=$('#libQ');if(q)q.oninput=()=>{collect();libQ=q.value;draw();const n=$('#libQ');n.focus();n.setSelectionRange(n.value.length,n.value.length)};
+    document.querySelectorAll('[data-cps]').forEach(b=>b.onclick=()=>{collect();const k=b.dataset.cps;CLIP={kind:'section',sec:k,label:SECLABEL[k],text:txt[k],from:title};toast(`Copied ${SECLABEL[k]}. Open another day and tap Paste.`);draw()});
+    document.querySelectorAll('[data-pss]').forEach(b=>b.onclick=()=>{if(!CLIP||CLIP.kind!=='section')return;collect();const k=b.dataset.pss;
+      txt[k]=CLIP.text!=null?CLIP.text:[...(CLIP.items||[]).map(drillToLine),...(CLIP.notes?['Note: '+CLIP.notes]:[])].join('\n');draw();toast(`Pasted into ${SECLABEL[k]}. Tap Save day to keep it.`)});
+    $('#cpDay').onclick=()=>{collect();CLIP={kind:'day',sections:JSON.parse(JSON.stringify(d.sections)),dayNotes:d.dayNotes||'',from:title};toast('Copied the whole day.');draw()};
+    $('#psDay').onclick=()=>{if(!CLIP||CLIP.kind!=='day')return;collect();SECTIONS.forEach(([k])=>{txt[k]=secToText(CLIP.sections,k);if(txt[k])open.add(k)});$('#deNotes').value=CLIP.dayNotes||'';d.dayNotes=CLIP.dayNotes||'';draw();toast('Pasted the whole day. Tap Save day to keep it.')};
+    $('#deSave').onclick=async()=>{const n=await save();closeLayer();toast(n?`Saved · ${n} new drill${n>1?'s':''} added to the library`:'Saved')};
+    const nx=$('#deSaveNext');if(nx)nx.onclick=async()=>{await save();opts.nav(1)};
+    if(opts.nav){$('#dePrev').onclick=async()=>{await save();opts.nav(-1)};$('#deNext').onclick=async()=>{await save();opts.nav(1)}}
+    document.querySelectorAll('[data-extra]').forEach(b=>b.onclick=async()=>{collect();await learnDrills(d.sections);await window['__extra_'+b.dataset.extra](d)});
   };draw();
 }
 
@@ -1268,7 +1306,7 @@ function builderView(){
           <select id="bTpl"><option value="">Load a template…</option>${S.templates.map(t=>`<option value="${t.id}">${esc(t.title)} (${t.weeks.length} wk)</option>`).join('')}<option value="__new">＋ Create new template</option></select>
           <button class="btn small" id="bRepeat">Repeat week 1 down</button><button class="btn small" id="bSaveTpl">Save as template</button></div></div>
       <div class="legend">${T.map(t=>`<span class="chip ${tcls(t.name)}">${esc(t.name)} · ${t.load}</span>`).join('')}</div>
-      <p class="sub" style="margin:0;font-size:12.5px">Pick each day's type. Throws and effort % are optional targets the pitcher sees on his Today screen. Numbers on the right are workload points (same scale as the sheets) and, when a pitcher is selected, his projected ratio including his history.</p>
+      <p class="sub" style="margin:0;font-size:12.5px">Tap a day to fill it in. The right column is that week's workload points and, with a pitcher selected, his projected ratio.</p>
       <div style="overflow-x:auto"><div class="bgrid" id="bgrid"></div></div>
     </div></div>`;
   drawBuilderGrid();
@@ -1289,29 +1327,36 @@ function builderView(){
     document.querySelectorAll('[data-deltpl]').forEach(b=>b.onclick=async()=>{await API.deleteTemplate(b.dataset.deltpl);closeLayer();toast('Template deleted');builderView()})};
   $('#bSave').onclick=BUILD.tpl?saveTemplateFromBuilder:saveBuild;
 }
+function cellPreview(c){
+  const lines=SECTIONS.map(([k,l])=>{const xs=((c.sections||{})[k]||[]).filter(e=>e.name);const note=(c.sections||{})[k+'Notes'];return xs.length||note?`<span class="pv"><b>${l}</b> ${esc(xs.map(e=>e.name).join(', ')||note)}</span>`:''}).filter(Boolean);
+  return lines.slice(0,4).join('')+(lines.length>4?`<span class="pv sub">+${lines.length-4} more</span>`:'');
+}
+function openBuilderDay(k,i){
+  const c=BUILD.grid[k][i];const d=addDays(BUILD.start,7*k+i);
+  window.__extra_copytype=async(day)=>{if(!day.type){toast('Pick a day type first');return}let n=0;Object.assign(c,{sections:day.sections,dayNotes:day.dayNotes,type:day.type,throws:day.throws,intensity:day.intensity});BUILD.grid.forEach(w=>w.forEach(x=>{if(x!==c&&x.type===day.type){x.sections=JSON.parse(JSON.stringify(day.sections));x.dayNotes=day.dayNotes;n++}}));closeLayer();drawBuilderGrid();toast(`Copied to ${n} other ${day.type} day${n===1?'':'s'}`)};
+  window.__extra_copyweek=async(day)=>{let n=0;Object.assign(c,{sections:day.sections,dayNotes:day.dayNotes,type:day.type,throws:day.throws,intensity:day.intensity});BUILD.grid.forEach((w,kk)=>{if(kk===k)return;Object.assign(w[i],JSON.parse(JSON.stringify({type:day.type||'',sections:day.sections,dayNotes:day.dayNotes,throws:day.throws,intensity:day.intensity})));n++});closeLayer();drawBuilderGrid();toast(`Copied to ${DAYS[i]} of ${n} other week${n===1?'':'s'}`)};
+  const total=BUILD.grid.length*7;const idx=k*7+i;
+  dayEditor(`${dayName(d)} ${md(d)}`,c,async(day)=>{c.sections=day.sections;c.dayNotes=day.dayNotes;c.type=day.type||'';c.throws=day.throws;c.intensity=day.intensity;if(c.type!==RTT)delete c.rtt;drawBuilderGrid()},
+    `<button class="btn small" data-extra="copytype">Use for every day of this type</button><button class="btn small" data-extra="copyweek">Use for every ${DAYS[i]}</button>`,
+    {nav:dir=>{const n=idx+dir;if(n<0||n>=total){closeLayer();toast(n<0?'That’s the first day':'That’s the last day');return}openBuilderDay(Math.floor(n/7),n%7)}});
+}
 function drawBuilderGrid(){
-  const T=types();const first=[...BUILD.athletes][0];
-  let h=`<div class="cal-h"></div>${DAYS.map(d=>`<div class="h" style="font:600 12px var(--f-display);letter-spacing:.1em;text-transform:uppercase;color:var(--muted);padding:4px 6px">${d}</div>`).join('')}<div class="h" style="font:600 12px var(--f-display);letter-spacing:.1em;text-transform:uppercase;color:var(--muted);padding:4px 6px">Week</div>`;
+  const first=[...BUILD.athletes][0];
+  let h=`<div></div>${DAYS.map(d=>`<div class="bh">${d}</div>`).join('')}<div class="bh">Week</div>`;
   BUILD.grid.forEach((w,k)=>{const ws=addDays(BUILD.start,7*k);
-    h+=`<div class="wk mono" style="font-size:12px;color:var(--muted);padding:8px 2px">Wk ${k+1}<br>${md(ws)}</div>`;
-    w.forEach((c,i)=>{const d=addDays(ws,i);const col=c.type?`var(--t-${TVAR[c.type]||'rest'})`:'var(--line)';
-      const mark=calendar().find(x=>x.date===d);
-      h+=`<div class="bcell" style="border-top-color:${col}"><span class="mono" style="font-size:11px;color:var(--muted)">${md(d)}${mark?` · <b style="color:var(--red)">${esc(mark.label)}</b>`:''}</span>
-        <select data-k="${k}" data-i="${i}" data-f="type" aria-label="Type ${md(d)}"><option value="">—</option>${T.map(t=>`<option ${c.type===t.name?'selected':''}>${esc(t.name)}</option>`).join('')}</select>
-        <div class="mini"><input type="number" min="0" placeholder="thr" value="${(c.rtt?c.rtt.throws:c.throws)??''}" data-k="${k}" data-i="${i}" data-f="throws" aria-label="Throws"><input type="number" min="0" max="100" placeholder="%" value="${c.intensity??''}" data-k="${k}" data-i="${i}" data-f="intensity" aria-label="Effort percent"></div>
-        <input type="text" placeholder="note" value="${esc(c.notes||'')}" data-k="${k}" data-i="${i}" data-f="notes" style="padding:3px 5px;font-size:12px" aria-label="Note">
-        <button class="btn small ${drillCount(c.sections)||c.dayNotes||hasSecContent(c.sections)?'':'ghost'}" data-dayed="${k}|${i}" data-has="${drillCount(c.sections)||c.dayNotes||hasSecContent(c.sections)?1:0}" style="justify-content:center;padding:3px 6px;font-size:12px">${drillCount(c.sections)?drillCount(c.sections)+(drillCount(c.sections)===1?' drill':' drills'):(c.dayNotes||hasSecContent(c.sections)?'Notes added':'+ Drills & notes')}</button></div>`});
-    const mv=first?maxVelo(first):null;const load=Math.round(w.reduce((s,c)=>s+cellLoad(c,mv),0)*10)/10;const thr=w.reduce((s,c)=>s+(+c.throws||0),0);
+    h+=`<div class="wk mono">Wk ${k+1}<br>${md(ws)}</div>`;
+    w.forEach((c,i)=>{const d=addDays(ws,i);const mark=calendar().find(x=>x.date===d);const pv=cellPreview(c);
+      const meta=[(c.rtt?c.rtt.throws:c.throws)?`${c.rtt?c.rtt.throws:c.throws} thr`:'',c.intensity?c.intensity+'%':''].filter(Boolean).join(' · ');
+      h+=`<button type="button" class="bday ${c.type||pv||c.dayNotes?'':'empty'}" data-bday="${k}|${i}" style="--tc:${c.type?`var(--t-${TVAR[c.type]||'rest'})`:'var(--line)'}">
+        <span class="bd-top"><span class="mono">${md(d)}</span>${mark?`<b class="bd-mark">${esc(mark.label)}</b>`:''}</span>
+        ${c.type?chip(c.type):'<span class="bd-add">＋</span>'}
+        ${meta?`<span class="mono bd-meta">${meta}</span>`:''}${c.dayNotes?`<span class="pv"><i>${esc(c.dayNotes)}</i></span>`:''}${pv}</button>`});
+    const mv=first?maxVelo(first):null;const load=Math.round(w.reduce((s,c)=>s+cellLoad(c,mv),0)*10)/10;
     let ratio='';if(first){const hist=[];for(let j=3;j>=1;j--){const pw=addDays(ws,-7*j);const kk=k-j;hist.push(kk>=0?BUILD.grid[kk].reduce((s,c)=>s+cellLoad(c,mv),0):weekLoad(first,pw))}
-      const f=firstWeek(first);const arr=[...hist,load];const chronic=arr.reduce((a,b)=>a+b,0)/arr.length;const r=chronic?Math.round(load/chronic*100)/100:null;if(r!=null&&load)ratio=`<span class="pill ${ratioCls(r)}">${r.toFixed(2)}</span>`}
-    h+=`<div class="tot" style="display:flex;flex-direction:column;gap:4px;padding:6px 2px;font-size:12px"><span class="num"><b>${load}</b> pts</span>${thr?`<span class="num sub">${thr} thr</span>`:''}${ratio}</div>`});
+      const arr=[...hist,load];const chronic=arr.reduce((a,b)=>a+b,0)/arr.length;const r=chronic?Math.round(load/chronic*100)/100:null;if(r!=null&&load)ratio=`<span class="pill ${ratioCls(r)}">${r.toFixed(2)}</span>`}
+    h+=`<div class="tot"><span class="num"><b>${load}</b> pts</span>${ratio}</div>`});
   $('#bgrid').innerHTML=h;
-  document.querySelectorAll('[data-dayed]').forEach(b=>b.onclick=()=>{const [k,i]=b.dataset.dayed.split('|').map(Number);const c=BUILD.grid[k][i];const d=addDays(BUILD.start,7*k+i);
-    window.__extra_copytype=async(day)=>{let n=0;BUILD.grid.forEach(w=>w.forEach(x=>{if(x!==c&&x.type&&x.type===c.type){x.sections=JSON.parse(JSON.stringify(day.sections));x.dayNotes=day.dayNotes;n++}}));c.sections=day.sections;c.dayNotes=day.dayNotes;closeLayer();drawBuilderGrid();toast(`Copied to ${n} other ${c.type} day${n===1?'':'s'}`)};
-    window.__extra_copyweek=async(day)=>{let n=0;BUILD.grid.forEach((w,kk)=>{if(kk===k)return;const x=w[i];x.sections=JSON.parse(JSON.stringify(day.sections));x.dayNotes=day.dayNotes;n++});c.sections=day.sections;c.dayNotes=day.dayNotes;closeLayer();drawBuilderGrid();toast(`Copied to ${DAYS[i]} of ${n} other week${n===1?'':'s'}`)};
-    dayEditor(`${dayName(d)} ${md(d)}${c.type?' · '+c.type:''}`,c,async(day)=>{c.sections=day.sections;c.dayNotes=day.dayNotes;c.type=day.type||'';c.throws=day.throws;c.intensity=day.intensity;if(c.type!==RTT)delete c.rtt;drawBuilderGrid()},
-      `${c.type?`<button class="btn" data-extra="copytype">Save to every ${esc(c.type)} day</button>`:''}<button class="btn" data-extra="copyweek">Save to every ${DAYS[i]}</button>`)});
-  document.querySelectorAll('#bgrid [data-f]').forEach(el=>{const ev=el.tagName==='SELECT'?'change':'input';el.addEventListener(ev,()=>{const c=BUILD.grid[+el.dataset.k][+el.dataset.i];const f=el.dataset.f;if(f==='throws'&&c.rtt){c.rtt.throws=num(el.value)||0}else c[f]=f==='type'||f==='notes'?el.value:num(el.value);if(f==='type'&&el.value!==RTT)delete c.rtt;drawBuilderGrid()})});
+  document.querySelectorAll('[data-bday]').forEach(b=>b.onclick=()=>{const [k,i]=b.dataset.bday.split('|').map(Number);openBuilderDay(k,i)});
 }
 function newTemplate(){
   openLayer(`<h2>New template</h2><p class="sub" style="margin:0">Build a reusable plan (a week, a ramp-up, a return-to-throw block) and load it onto any pitcher later.</p>
