@@ -778,6 +778,8 @@ function updatesSince(t){
   const me=(S.me.email||'').toLowerCase();const items=[];
   for(const l of S.logs){if(!l.author||l.author.toLowerCase()===me||!(String(l.updated_at||'')>t))continue;const a=athlete(l.athlete_id);if(!a)continue;
     items.push({at:l.updated_at,aid:a.id,kind:l.checkin!=null&&l.checkin>=6?'bad':l.checkin!=null&&l.checkin>=4?'warn':'',text:`${a.nickname||a.name} logged ${dayName(l.date)} ${md(l.date)}${l.type?' · '+l.type:''}${l.checkin!=null?' · check-in '+l.checkin+'/10':''}`,sub:l.notes||''})}
+  for(const pg of S.programs){const a=athlete(pg.athlete_id);if(!a)continue;for(const [dt,dd] of Object.entries(pg.days||{})){if(!dd||!dd.editedBy||dd.editedBy.toLowerCase()===me||!(String(dd.editedAt||'')>t))continue;
+    items.push({at:dd.editedAt,aid:a.id,kind:'',text:`${a.nickname||a.name} edited his plan for ${dayName(dt)} ${md(dt)}${dd.type?' · '+dd.type:''}`,sub:dd.dayNotes||'',tab:'program'})}}
   for(const v of S.videos){const a=athlete(v.athlete_id);if(!a||!v.author||v.author.toLowerCase()===me||!(String(v.created_at||'')>t))continue;
     items.push({at:v.created_at,aid:a.id,kind:'',text:`${a.nickname||a.name} posted a video: ${v.title||'untitled'}`,sub:v.notes||'',tab:'videos'})}
   return items.sort((x,y)=>String(y.at).localeCompare(String(x.at)));
@@ -795,7 +797,8 @@ let POPPED=false;
 async function pollUpdates(){if(S.mode!=='cloud'||S.me.role!=='coach')return;try{
   const since=new Date(Date.now()-7*864e5).toISOString().slice(0,10);
   const {data:l}=await sb.from('logs').select('*').gte('updated_at',since);for(const x of l||[]){const k=x.athlete_id+'|'+x.date;const ex=S.logIdx[k];if(ex)Object.assign(ex,x);else S.logs.push(x)}indexLogs();
-  const {data:v,error}=await sb.from('videos').select('*');if(!error&&v)S.videos=v;chrome()}catch(e){}}
+  const {data:v,error}=await sb.from('videos').select('*');if(!error&&v)S.videos=v;
+  const {data:pg}=await sb.from('programs').select('*');if(pg)S.programs=pg;chrome()}catch(e){}}
 
 /* ============================================================ drawers */
 function closeLayer(){$('#layer').innerHTML=''}
@@ -837,12 +840,12 @@ function dayDrawer(aid,date){
   openLayer(`<div class="spread"><div><div class="eyebrow">${esc(a.nickname||a.name)}</div><h2>${dayName(date)} ${md(date)}</h2></div><button class="btn small ghost" id="dClose">Close</button></div>
     <div class="panel"><div class="eyebrow">Planned</div><div class="row" style="margin-top:6px">${chip(p&&p.type)}${p&&p.throws?`<span class="mono">${p.throws} throws</span>`:''}${p&&p.intensity?`<span class="mono">${p.intensity}%</span>`:''}</div>${p&&p.notes?`<p style="margin:8px 0 0">${esc(p.notes)}</p>`:''}${p?`<p class="sub" style="font-size:12px;margin:6px 0 0">${esc(p.program.title)}</p>`:''}</div>
     ${p?sectionsHtml(p):''}
-    ${p&&S.me.role==='coach'&&!S.viewAs?'<button class="btn small" id="dEditDay">Edit drills & notes for this day</button>':''}
+    <button class="btn small" id="dEditDay">${p?'Edit this day’s plan':'Add a plan for this day'}</button>${p&&p.editedBy?`<span class="sub" style="font-size:12px">Edited by ${esc(p.editedBy===a.email?(a.nickname||a.name):'coach')} ${new Date(p.editedAt).toLocaleDateString()}</span>`:''}
     ${p&&p.rtt?rttDetailHtml(p,aid)+(S.me.role==='coach'&&!S.viewAs?rttInputs(p,aid):''):''}
     <h3>Log</h3>${logForm(aid,date,'dl')}
     <div class="row"><button class="btn primary" id="dSave">Save log</button></div>`);
   bindLogForm('dl');$('#dClose').onclick=closeLayer;
-  const ed=$('#dEditDay');if(ed)ed.onclick=()=>dayEditor(`${a.nickname||a.name} · ${dayName(date)} ${md(date)}`,p.program.days[date],async(day)=>{const prog=p.program;prog.days[date]={...prog.days[date],sections:day.sections,dayNotes:day.dayNotes};await API.saveProgram(prog);render()});
+  const ed=$('#dEditDay');if(ed)ed.onclick=()=>dayEditor(`${a.nickname||a.name} · ${dayName(date)} ${md(date)}`,p?{...p,program:undefined}:{},async(day)=>{await editDayPlan(aid,date,day);render()});
   if(p&&p.rtt&&$('#rSave')){const read=()=>({...p.rtt,throws:num($('#rT').value)||0,dist:num($('#rD').value)||60,intentThrows:num($('#rI').value)||0,velo:num($('#rV').value)});
     ['rT','rD','rI','rV'].forEach(id=>$('#'+id).oninput=()=>$('#rLoad').textContent=rttLoad(read(),maxVelo(aid))+' pts');
     $('#rSave').onclick=async()=>{const prog=p.program;const r=read();prog.days[date]={...prog.days[date],rtt:r,load:rttLoad(r,maxVelo(aid))};try{await API.saveProgram(prog);toast('Day updated');closeLayer();render()}catch(e){toast(e.message)}}}
@@ -938,13 +941,14 @@ function targetCard(a,coach){
 }
 
 /* ============================================================ day sections + drill library */
-const SECTIONS=[['prework','Pre-work'],['throwing','Throwing'],['medball','Med ball'],['focus','Bullpen / live focus']];
+const SECTIONS=[['prework','Pre-work'],['plyo','Plyo'],['throwing','Throwing'],['medball','Med ball'],['focus','Bullpen / live focus']];
+const PLYO_RX=/plyo|pivot pick|roll-?in|reverse throw|walking windup|marshall|rocker|drop step|step.?in front|janitor|figure 8|wall throw|scap/i;
 const SECLABEL=Object.fromEntries(SECTIONS);
 function drillLib(){
   if(Array.isArray(S.settings.drillLibrary))return S.settings.drillLibrary;
   const seen=new Set(),out=[];const add=(name,section,notes)=>{const k=String(name||'').trim().toLowerCase();if(!k||seen.has(k))return;seen.add(k);out.push({name:String(name).trim(),section,notes:notes||''})};
-  for(const a of S.athletes){const pr=a.profile||{};(pr.warmup||[]).forEach(e=>add(e.name,'prework'));Object.values(pr.cards||{}).forEach(c=>(c.exercises||[]).forEach(e=>add(e.name,/bullpen|live/i.test(e.name)?'focus':'throwing')))}
-  ((S.settings.library||{}).drills||[]).forEach(n=>add(n,'throwing'));
+  for(const a of S.athletes){const pr=a.profile||{};(pr.warmup||[]).forEach(e=>add(e.name,'prework'));Object.values(pr.cards||{}).forEach(c=>(c.exercises||[]).forEach(e=>add(e.name,/bullpen|live/i.test(e.name)?'focus':PLYO_RX.test(e.name)?'plyo':'throwing')))}
+  ((S.settings.library||{}).drills||[]).forEach(n=>add(n,'plyo'));
   return out.sort((a,b)=>a.name.localeCompare(b.name));
 }
 async function learnDrills(sections){
@@ -966,7 +970,9 @@ function dayEditor(title,day,onSave,extraBtns){
   let filter='';
   const draw=()=>{const lib=drillLib();
     openLayer(`<div class="spread"><div><div class="eyebrow">Program day</div><h2>${esc(title)}</h2></div><button class="btn small ghost" id="deClose">Close</button></div>
-      <label class="f">Day notes (he sees these at the top of his day)<textarea id="deNotes" placeholder="e.g. Keep catch play loose, finish with 5 at 80%">${esc(d.dayNotes||'')}</textarea></label>
+      <div class="row"><label class="f" style="flex:1;min-width:150px">Day type<select id="deType"><option value="">—</option>${types().map(t=>`<option ${d.type===t.name?'selected':''}>${esc(t.name)}</option>`).join('')}</select></label>
+        <label class="f" style="width:100px">Throws<input type="number" min="0" id="deThr" value="${d.throws??''}"></label><label class="f" style="width:100px">Effort %<input type="number" min="0" max="100" id="deInt" value="${d.intensity??''}"></label></div>
+      <label class="f">Day notes (shown at the top of the day)<textarea id="deNotes" placeholder="e.g. Keep catch play loose, finish with 5 at 80%">${esc(d.dayNotes||'')}</textarea></label>
       <div class="row cliprow"><button class="btn small" id="cpDay">Copy whole day</button><button class="btn small" id="psDay" ${CLIP&&CLIP.kind==='day'?'':'disabled'}>Paste whole day${CLIP&&CLIP.kind==='day'?` <span class="sub">(${esc(CLIP.from)})</span>`:''}</button></div>
       ${SECTIONS.map(([k,l])=>`<div class="secbox"><div class="spread"><h3>${l}</h3><div class="row" style="gap:4px"><button class="btn small ghost" data-cps="${k}" title="Copy ${l}">Copy</button><button class="btn small ghost" data-pss="${k}" ${CLIP&&CLIP.kind==='section'?'':'disabled'} title="${CLIP&&CLIP.kind==='section'?`Paste ${esc(CLIP.label)} from ${esc(CLIP.from)}`:'Copy a section first'}">Paste</button><button class="btn small" data-addd="${k}">Add drill</button></div></div>
         <input type="text" data-secnote="${k}" value="${esc(d.sections[k+'Notes']||'')}" placeholder="Notes for this section" style="width:100%;margin:6px 0">
@@ -976,7 +982,7 @@ function dayEditor(title,day,onSave,extraBtns){
         <div class="libchips">${SECTIONS.map(([k,l])=>{const xs=lib.filter(x=>x.section===k&&(!filter||x.name.toLowerCase().includes(filter.toLowerCase()))).slice(0,40);return xs.length?`<div><div class="eyebrow" style="margin:6px 0 4px">${l}</div>${xs.map(x=>`<button class="libchip" data-lib="${esc(x.name)}" data-libsec="${k}" title="${esc(x.notes||'')}">${esc(x.name)}</button>`).join('')}</div>`:''}).join('')}</div></div>
       <datalist id="lib-all">${lib.map(x=>`<option value="${esc(x.name)}">`).join('')}</datalist><datalist id="lib-balls">${((S.settings.library||{}).ballWeights||[]).concat((S.settings.library||{}).veloWeights||[]).map(x=>`<option value="${esc(x)}">`).join('')}</datalist>
       <div class="row"><button class="btn primary" id="deSave">Save day</button>${extraBtns||''}</div>`);
-    const sync=()=>{d.dayNotes=$('#deNotes').value.trim();document.querySelectorAll('[data-secnote]').forEach(x=>d.sections[x.dataset.secnote+'Notes']=x.value.trim());
+    const sync=()=>{d.dayNotes=$('#deNotes').value.trim();d.type=$('#deType').value||null;d.throws=num($('#deThr').value);d.intensity=num($('#deInt').value);document.querySelectorAll('[data-secnote]').forEach(x=>d.sections[x.dataset.secnote+'Notes']=x.value.trim());
       document.querySelectorAll('.drow').forEach(r=>{const e=d.sections[r.dataset.sec][+r.dataset.i];r.querySelectorAll('input').forEach(x=>e[x.dataset.f]=x.value.trim()||null)})};
     $('#deClose').onclick=closeLayer;
     const clean=arr=>JSON.parse(JSON.stringify((arr||[]).filter(e=>e.name)));
@@ -992,6 +998,17 @@ function dayEditor(title,day,onSave,extraBtns){
     $('#deSave').onclick=async()=>{sync();SECTIONS.forEach(([k])=>d.sections[k]=d.sections[k].filter(e=>e.name));try{const n=await learnDrills(d.sections);await onSave(d);closeLayer();toast(n?`Saved · ${n} new drill${n>1?'s':''} added to the library`:'Saved')}catch(e){toast(e.message)}};
     document.querySelectorAll('[data-extra]').forEach(b=>b.onclick=async()=>{sync();SECTIONS.forEach(([k])=>d.sections[k]=d.sections[k].filter(e=>e.name));await learnDrills(d.sections);await window['__extra_'+b.dataset.extra](d)});
   };draw();
+}
+
+
+/* Save one day of a pitcher's plan. Edits the program that owns the date; if none, starts a one-day plan for him. Athlete edits are stamped so the coach sees them. */
+async function editDayPlan(aid,date,day){
+  const p=planDay(aid,date);const stamp=S.me.role==='coach'&&!S.viewAs?{}:{editedBy:S.me.email,editedAt:new Date().toISOString()};
+  const body={type:day.type||null,sections:day.sections,dayNotes:day.dayNotes||''};if(day.throws!=null)body.throws=day.throws;else delete body.throws;if(day.intensity!=null)body.intensity=day.intensity;
+  if(p){const prog=p.program;const old=prog.days[date]||{};const merged={...old,...body,...stamp};if(day.throws==null)delete merged.throws;if(day.intensity==null)delete merged.intensity;if(merged.type!==RTT)delete merged.rtt;prog.days[date]=merged;await API.saveProgram(prog)}
+  else{const own=S.programs.find(x=>x.athlete_id===aid&&x.source==='athlete'&&x.start_date===monday(date));
+    if(own){own.days[date]={...body,...stamp};await API.saveProgram(own)}
+    else await API.saveProgram({id:uid(),athlete_id:aid,title:'My plan',start_date:monday(date),end_date:addDays(monday(date),6),days:{[date]:{...body,...stamp}},source:'athlete',created_at:new Date().toISOString()})}
 }
 
 /* ============================================================ builder */
@@ -1066,7 +1083,7 @@ function drawBuilderGrid(){
   document.querySelectorAll('[data-dayed]').forEach(b=>b.onclick=()=>{const [k,i]=b.dataset.dayed.split('|').map(Number);const c=BUILD.grid[k][i];const d=addDays(BUILD.start,7*k+i);
     window.__extra_copytype=async(day)=>{let n=0;BUILD.grid.forEach(w=>w.forEach(x=>{if(x!==c&&x.type&&x.type===c.type){x.sections=JSON.parse(JSON.stringify(day.sections));x.dayNotes=day.dayNotes;n++}}));c.sections=day.sections;c.dayNotes=day.dayNotes;closeLayer();drawBuilderGrid();toast(`Copied to ${n} other ${c.type} day${n===1?'':'s'}`)};
     window.__extra_copyweek=async(day)=>{let n=0;BUILD.grid.forEach((w,kk)=>{if(kk===k)return;const x=w[i];x.sections=JSON.parse(JSON.stringify(day.sections));x.dayNotes=day.dayNotes;n++});c.sections=day.sections;c.dayNotes=day.dayNotes;closeLayer();drawBuilderGrid();toast(`Copied to ${DAYS[i]} of ${n} other week${n===1?'':'s'}`)};
-    dayEditor(`${dayName(d)} ${md(d)}${c.type?' · '+c.type:''}`,c,async(day)=>{c.sections=day.sections;c.dayNotes=day.dayNotes;drawBuilderGrid()},
+    dayEditor(`${dayName(d)} ${md(d)}${c.type?' · '+c.type:''}`,c,async(day)=>{c.sections=day.sections;c.dayNotes=day.dayNotes;c.type=day.type||'';c.throws=day.throws;c.intensity=day.intensity;if(c.type!==RTT)delete c.rtt;drawBuilderGrid()},
       `${c.type?`<button class="btn" data-extra="copytype">Save to every ${esc(c.type)} day</button>`:''}<button class="btn" data-extra="copyweek">Save to every ${DAYS[i]}</button>`)});
   document.querySelectorAll('#bgrid [data-f]').forEach(el=>{const ev=el.tagName==='SELECT'?'change':'input';el.addEventListener(ev,()=>{const c=BUILD.grid[+el.dataset.k][+el.dataset.i];const f=el.dataset.f;if(f==='throws'&&c.rtt){c.rtt.throws=num(el.value)||0}else c[f]=f==='type'||f==='notes'?el.value:num(el.value);if(f==='type'&&el.value!==RTT)delete c.rtt;drawBuilderGrid()})});
 }
@@ -1205,7 +1222,7 @@ function athleteToday(aid){
     ${goalsBanner(a,false)}
     <div class="today-hero">
       <div class="panel stack">
-        <div class="eyebrow">Today's throwing</div>
+        <div class="spread"><div class="eyebrow">Today's throwing</div><button class="btn small" id="tEdit">${p?'Edit today’s plan':'Add today’s plan'}</button></div>
         ${p&&p.type?`<div class="big-type" style="color:var(--t-${TVAR[p.type]||'rest'})">${esc(p.type)}</div>`:'<div class="big-type sub">No plan today</div>'}
         <div class="kv">${t?`<div><b>${esc(t.rpe||'—')}</b><span>effort</span></div>`:''}${p&&p.intensity?`<div><b>${p.intensity}%</b><span>target effort</span></div>`:''}${p&&p.throws?`<div><b>${p.throws}</b><span>throws</span></div>`:''}${p&&p.rtt&&p.rtt.throws?`<div><b>${p.rtt.throws}</b><span>throws</span></div>`:''}${p&&p.rtt&&p.rtt.velo?`<div><b>${p.rtt.velo}</b><span>mph target${p.rtt.intentThrows&&p.rtt.intentThrows<p.rtt.throws?' · '+p.rtt.intentThrows+' throws':''}</span></div>`:''}${(()=>{const t=targetNow(a);const x=t.cur||t.final;return x&&(x.ip||x.pitches)?`<div><b>${tgtTxt(x)}</b><span>${t.cur?'current game target':'game target'}</span></div>`:''})()}</div>
         ${p&&p.notes?`<p style="margin:0"><b>Coach:</b> ${esc(p.notes)}</p>`:''}
@@ -1219,6 +1236,7 @@ function athleteToday(aid){
     
   </div>`;
   bindLogForm('tl');
+  $('#tEdit').onclick=()=>dayEditor(`${dayName(TODAY)} ${md(TODAY)}`,p?{...p,program:undefined}:{},async(day)=>{await editDayPlan(aid,TODAY,day);athleteToday(aid)});
   $('#tSave').onclick=async()=>{try{await API.saveLog(readLogForm('tl',aid,TODAY));toast('Logged. Coach can see it now.');athleteToday(aid)}catch(e){toast(e.message)}};
   document.querySelectorAll('.cal [data-day]').forEach(el=>el.onclick=()=>dayDrawer(aid,el.dataset.day));
 }
