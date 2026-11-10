@@ -453,10 +453,10 @@ function chrome(){
 ''; 
   const sw=S.me.role==='coach'?`<label class="viewsw" title="Switch between your view and a pitcher's view"><span>View</span><select id="viewSel" aria-label="View as"><option value="">Coach (admin)</option>${S.athletes.slice().sort((a,b)=>a.name.localeCompare(b.name)).map(a=>`<option value="${a.id}" ${S.viewAs===a.id?'selected':''}>${esc(a.name)}</option>`).join('')}</select></label>`:'';
   const nUp=S.me.role==='coach'&&!S.viewAs?updatesSince(lastSeen()).length:0;
-  who.innerHTML=`${S.me.role==='coach'&&!S.viewAs?`<button class="bell" id="bell" aria-label="${nUp} new updates">Updates${nUp?` <b>${nUp}</b>`:''}</button>`:''}${sw}<span class="em">${esc(S.me.email)}</span><button id="signout">${S.mode==='demo'?'Exit preview':'Sign out'}</button>`;
+  who.innerHTML=`${S.me.role==='coach'&&!S.viewAs?`<button class="bell" id="bell" aria-label="${nUp} new updates">Updates${nUp?` <b>${nUp}</b>`:''}</button>`:''}${sw}<span class="em">${esc(S.me.email)}</span>${S.mode==='cloud'?'<button id="chpw">Password</button>':''}<button id="signout">${S.mode==='demo'?'Exit preview':'Sign out'}</button>`;
   const bl=$('#bell');if(bl)bl.onclick=()=>showUpdates(true);
   const vs=$('#viewSel');if(vs)vs.onchange=()=>{S.viewAs=vs.value||null;go(S.viewAs?'today':'staff');render()};
-  $('#signout').onclick=signOut;
+  $('#signout').onclick=signOut;const cp=$('#chpw');if(cp)cp.onclick=changePassword;
   const band=$('#demoBand');
   if(S.mode==='demo'||S.viewAs){band.hidden=false;
     $('#demoText').textContent=S.viewAs?`Player view: ${athlete(S.viewAs)?.name}. This is exactly what he sees. Switch back with the View menu or the button.`:'Preview mode: your real Drive data, saved only in this browser. Nothing is sent to the team cloud and no emails go out.';
@@ -481,28 +481,75 @@ function render(){
 }
 
 /* ============================================================ login */
+let LOGINMODE='signin';
+const SITE_URL=()=>location.origin+location.pathname;
 function loginView(){
+  const m=LOGINMODE;
+  const title={signin:'Sign in',signup:'Create your account',reset:'Reset your password'}[m];
   return `<div class="login stack">
     <div class="eyebrow">Sacred Heart Pitching</div>
     <h1>SHU<span style="color:var(--red)">pitcher</span>hub</h1>
-    <p class="sub">Throwing programs, daily check-ins and workload for the staff. Sign in with the email Coach invited.</p>
-    <form class="panel stack" id="loginForm">
-      <label class="f">Email<input type="email" id="loginEmail" required placeholder="you@mail.sacredheart.edu" autocomplete="email"></label>
-      <button class="btn primary" type="submit" id="loginBtn">Email me a sign-in link</button>
-      <p class="sub" id="loginMsg" style="margin:0;font-size:13px"></p>
+    <p class="sub">Throwing programs, daily check-ins and workload for the staff.</p>
+    <form class="panel stack" id="loginForm" novalidate>
+      <h2>${title}</h2>
+      <label class="f">Email<input type="email" id="loginEmail" required placeholder="you@mail.sacredheart.edu" autocomplete="email" value="${esc(lsGet('shuhub_lastEmail')||'')}"></label>
+      ${m!=='reset'?`<label class="f">Password<input type="password" id="loginPw" required minlength="8" autocomplete="${m==='signup'?'new-password':'current-password'}"></label>`:''}
+      ${m==='signup'?`<label class="f">Confirm password<input type="password" id="loginPw2" required minlength="8" autocomplete="new-password"></label><p class="sub" style="margin:0;font-size:12.5px">At least 8 characters. Use the email Coach has on the roster.</p>`:''}
+      ${m==='reset'?`<p class="sub" style="margin:0;font-size:13px">We'll email you a link to set a new password.</p>`:''}
+      <button class="btn primary" type="submit" id="loginBtn">${{signin:'Sign in',signup:'Create account',reset:'Email me a reset link'}[m]}</button>
+      <p class="sub" id="loginMsg" style="margin:0;font-size:13px" role="status"></p>
+      <div class="row" style="justify-content:space-between;font-size:13px">
+        ${m==='signin'?`<button type="button" class="btn small ghost" data-lm="reset">Forgot password?</button><button type="button" class="btn small ghost" data-lm="signup">First time here? Create your password</button>`:`<button type="button" class="btn small ghost" data-lm="signin">← Back to sign in</button>`}
+      </div>
     </form>
     <div id="previewBox"></div>
   </div>`;
 }
 function bindLogin(){
   const f=$('#loginForm');if(!f)return;
-  f.onsubmit=async e=>{e.preventDefault();const email=$('#loginEmail').value.trim();const b=$('#loginBtn');b.disabled=true;
-    try{if(!sb)throw new Error('The sign-in service did not load. Check your connection and reload.');
-      const {error}=await sb.auth.signInWithOtp({email,options:{shouldCreateUser:true,emailRedirectTo:location.origin+location.pathname}});
-      if(error)throw error;$('#loginMsg').textContent=`Sign-in link sent to ${email}. Open it on this device.`;}
-    catch(err){$('#loginMsg').textContent=err.message||String(err)}finally{b.disabled=false}};
-  getSeed().then(seed=>{if(!seed)return;$('#previewBox').innerHTML=`<div class="panel stack"><b>Preview with the imported Drive data</b><span class="sub" style="font-size:13px">Opens the coach view using the throwing programs pulled from Google Drive. Changes stay in this browser.</span><button class="btn" id="startDemo">Open preview</button></div>`;
+  document.querySelectorAll('[data-lm]').forEach(b=>b.onclick=()=>{const em=$('#loginEmail').value.trim();if(em)lsSet('shuhub_lastEmail',em);LOGINMODE=b.dataset.lm;render()});
+  f.onsubmit=async e=>{e.preventDefault();const email=$('#loginEmail').value.trim().toLowerCase();const msg=$('#loginMsg');const b=$('#loginBtn');
+    if(!email){msg.textContent='Enter your email.';return}lsSet('shuhub_lastEmail',email);
+    if(!sb){msg.textContent='The sign-in service did not load. Check your connection and reload.';return}
+    b.disabled=true;msg.textContent='';
+    try{
+      if(LOGINMODE==='signin'){const pw=$('#loginPw').value;if(!pw)throw new Error('Enter your password.');
+        const {error}=await sb.auth.signInWithPassword({email,password:pw});
+        if(error)throw new Error(/invalid/i.test(error.message)?'Email or password is wrong. If you haven’t set a password yet, use “First time here?” or “Forgot password?”.':/confirm/i.test(error.message)?'Confirm your email first: open the link we sent you, then sign in.':error.message);
+        location.reload();return}
+      if(LOGINMODE==='signup'){const pw=$('#loginPw').value,pw2=$('#loginPw2').value;
+        if(pw.length<8)throw new Error('Use at least 8 characters.');if(pw!==pw2)throw new Error('The two passwords don’t match.');
+        const {data,error}=await sb.auth.signUp({email,password:pw,options:{emailRedirectTo:SITE_URL(),data:{pw_set:true}}});if(error)throw error;
+        if(data.user&&Array.isArray(data.user.identities)&&!data.user.identities.length){msg.textContent='That email already has an account. Use “Forgot password?” to set or reset your password.';return}
+        if(data.session){location.reload();return}
+        msg.textContent=`Almost done: we sent a confirmation link to ${email}. Open it once, and after that you'll sign in with your password.`;return}
+      if(LOGINMODE==='reset'){const {error}=await sb.auth.resetPasswordForEmail(email,{redirectTo:SITE_URL()});if(error)throw error;
+        msg.textContent=`If ${email} has an account, a reset link is on its way. Open it on this device to choose a new password.`;return}
+    }catch(err){msg.textContent=err.message||String(err)}finally{b.disabled=false}};
+  getSeed().then(seed=>{if(!seed||!$('#previewBox'))return;$('#previewBox').innerHTML=`<div class="panel stack"><b>Preview with the imported Drive data</b><span class="sub" style="font-size:13px">Opens the coach view using the throwing programs pulled from Google Drive. Changes stay in this browser.</span><button class="btn" id="startDemo">Open preview</button></div>`;
     $('#startDemo').onclick=()=>{Demo.start(seed);go('staff');render()}});
+}
+/* Shown after an invite/confirmation link, a reset link, or for anyone who signed in before passwords existed. */
+function setPasswordView(email,reason){
+  $('#nav').innerHTML='';$('#who').innerHTML='';
+  $('#app').innerHTML=`<div class="login stack"><div class="eyebrow">${esc(email)}</div><h1>${reason==='recovery'?'Choose a new password':'Create your password'}</h1>
+    <p class="sub">${reason==='recovery'?'Set a new password for SHUpitcherhub.':'From now on you’ll sign in with your email and this password instead of an email link.'}</p>
+    <form class="panel stack" id="pwForm"><label class="f">New password<input type="password" id="pw1" minlength="8" required autocomplete="new-password"></label>
+      <label class="f">Confirm password<input type="password" id="pw2" minlength="8" required autocomplete="new-password"></label>
+      <button class="btn primary" type="submit" id="pwGo">Save password</button><p class="sub" id="pwMsg" style="margin:0;font-size:13px" role="status"></p></form></div>`;
+  $('#pwForm').onsubmit=async e=>{e.preventDefault();const a=$('#pw1').value,b=$('#pw2').value,m=$('#pwMsg');
+    if(a.length<8){m.textContent='Use at least 8 characters.';return}if(a!==b){m.textContent='The two passwords don’t match.';return}
+    $('#pwGo').disabled=true;const {error}=await sb.auth.updateUser({password:a,data:{pw_set:true}});
+    if(error){m.textContent=/same/i.test(error.message)?'That’s your current password. Pick a different one, or just sign in.':error.message;$('#pwGo').disabled=false;return}
+    toast('Password saved');location.hash='';location.reload()};
+}
+function changePassword(){
+  openLayer(`<div class="spread"><h2>Change password</h2><button class="btn small ghost" id="cpClose">Close</button></div>
+    <form class="stack" id="cpForm"><label class="f">New password<input type="password" id="cp1" minlength="8" required autocomplete="new-password"></label><label class="f">Confirm password<input type="password" id="cp2" minlength="8" required autocomplete="new-password"></label>
+    <button class="btn primary" type="submit">Save password</button><p class="sub" id="cpMsg" style="margin:0;font-size:13px"></p></form>`);
+  $('#cpClose').onclick=closeLayer;
+  $('#cpForm').onsubmit=async e=>{e.preventDefault();const a=$('#cp1').value,b=$('#cp2').value,m=$('#cpMsg');if(a.length<8){m.textContent='Use at least 8 characters.';return}if(a!==b){m.textContent='The two passwords don’t match.';return}
+    const {error}=await sb.auth.updateUser({password:a,data:{pw_set:true}});if(error){m.textContent=error.message;return}closeLayer();toast('Password changed')};
 }
 function noAccessView(){
   return `<div class="login stack"><h1>Almost there</h1>
@@ -1175,7 +1222,7 @@ async function saveBuild(){
 /* ============================================================ roster & invites */
 function rosterView(){
   $('#app').innerHTML=`<div class="stack">
-    <div class="spread"><div><h1>Roster & invites</h1><p class="sub" style="margin:4px 0 0">Add each pitcher's email, then send the invite. He gets a one-tap sign-in link and lands on his own Today screen.</p></div>
+    <div class="spread"><div><h1>Roster & invites</h1><p class="sub" style="margin:4px 0 0">Add each pitcher's email, then send the invite. He gets a link, creates his password, and signs in with email and password from then on.</p></div>
       <div class="row"><button class="btn" id="rAdd">Add pitcher</button><button class="btn primary" id="rSendAll">Send all pending invites</button></div></div>
     <div class="panel"><div class="tbl-wrap"><table><thead><tr><th>Pitcher</th><th>Short name</th><th>Role</th><th>Game target</th><th style="min-width:240px">Email</th><th>Invite</th><th></th></tr></thead><tbody>
     ${S.athletes.slice().sort((a,b)=>a.name.localeCompare(b.name)).map(a=>`<tr data-id="${a.id}">
@@ -1205,7 +1252,7 @@ async function sendInvites(list){
   let ok=0,fail=[];
   for(const a of list){
     try{await API.saveAthlete(a);
-      if(S.mode!=='demo'){const {error}=await sb.auth.signInWithOtp({email:a.email,options:{shouldCreateUser:true,emailRedirectTo:location.origin+location.pathname}});if(error)throw error}
+      if(S.mode!=='demo'){const {error}=await sb.auth.signInWithOtp({email:a.email,options:{shouldCreateUser:true,emailRedirectTo:SITE_URL()}});if(error)throw error}
       a.profile=a.profile||{};a.profile.invitedAt=new Date().toISOString();await API.saveAthlete(a);ok++}
     catch(e){fail.push(`${a.nickname||a.name}: ${e.message}`)}
   }
@@ -1304,15 +1351,17 @@ async function boot(){
   $('#brand').onclick=e=>{e.preventDefault();go(S.me.role==='athlete'||S.viewAs?'today':'staff')};
   if(window.__FORCE_DEMO__){const seed=await getSeed();Demo.start(seed);render();loadHubVelo();return}
   if(!window.supabase){S.mode=null;render();return}
+  const RECOVERY=/type=recovery/.test(location.hash);
   sb=window.supabase.createClient(CLOUD.url,CLOUD.key,{auth:{persistSession:true,detectSessionInUrl:true,flowType:'implicit'}});
   const {data}=await sb.auth.getSession();
+  if(data.session&&(RECOVERY||!(data.session.user.user_metadata||{}).pw_set)){setPasswordView(data.session.user.email,RECOVERY?'recovery':'new');return}
   if(data.session){S.mode='cloud';
     try{await cloudLoad()}catch(e){
       $('#app').innerHTML=`<div class="login stack"><h1>One setup step left</h1><div class="panel stack"><p style="margin:0">Signed in as <b>${esc(data.session.user.email)}</b>, but the hub's tables aren't in the database yet.</p><p class="sub" style="margin:0">Open Supabase → SQL Editor, paste <span class="mono">supabase/setup.sql</span> from this site's repo, put your email in the last line, and run it. Then reload.</p><p class="sub mono" style="margin:0;font-size:12px">${esc(e.message||e)}</p><button class="btn" onclick="signOut()">Sign out</button></div></div>`;return}
   }
   loadHubVelo();
   setInterval(pollUpdates,60000);
-  sb.auth.onAuthStateChange((ev)=>{if(ev==='SIGNED_IN'&&S.mode!=='cloud')location.reload()});
+  sb.auth.onAuthStateChange((ev,sess)=>{if(ev==='PASSWORD_RECOVERY'&&sess){setPasswordView(sess.user.email,'recovery');return}if(ev==='SIGNED_IN'&&S.mode!=='cloud')location.reload()});
   render();
 }
 boot();
