@@ -519,7 +519,7 @@ function loginView(){
   return `<div class="login stack">
     <div class="eyebrow">Sacred Heart Pitching</div>
     <h1>SHU<span style="color:var(--red)">pitcher</span>hub</h1>
-    <p class="sub">${inv?'You’re invited. Enter the team password Coach gave you to get in.':'Throwing programs, daily check-ins and workload for the staff.'}</p>
+    <p class="sub">${inv?'You’re invited. Enter the team password to get in.':'Throwing programs, daily check-ins and workload for the staff.'}</p>
     <form class="panel stack" id="loginForm" novalidate>
       <h2>${m==='reset'?'Reset your password':inv?'Welcome':'Sign in'}</h2>
       <label class="f">Email<input type="email" id="loginEmail" required placeholder="you@mail.sacredheart.edu" autocomplete="username" value="${esc(em)}"></label>
@@ -1406,8 +1406,9 @@ function rosterView(){
       <td data-login="${esc((a.email||'').toLowerCase())}">${a.email?'<span class="sub">…</span>':'<span class="sub">Add an email</span>'}${(a.profile||{}).invitedAt?`<div class="sub" style="font-size:11.5px">Invite emailed ${md(iso(a.profile.invitedAt))}</div>`:''}</td>
       <td class="r" style="white-space:nowrap"><button class="btn small" data-save="${a.id}">Save</button> <button class="btn small" data-inv="${a.id}" ${a.email?'':'disabled'}>Send invite</button> <button class="btn small" data-reset="${a.id}" ${a.email?'':'disabled'}>Reset to team password</button></td></tr>`).join('')}
     </tbody></table></div></div>
-    <div class="panel stack"><h2>Coaches</h2><p class="sub" style="margin:0">Coaches see the whole staff and can build programs. Add another coach's email here; they sign in the same way.</p>
-      <div class="row"><input type="email" id="staffEmail" placeholder="coach@sacredheart.edu" style="flex:1;min-width:220px"><button class="btn" id="staffAdd">Add coach</button></div></div>
+    <div class="panel stack"><h2>Coaches</h2><p class="sub" style="margin:0">Coaches see the whole staff and can build programs. Adding a coach creates their login on the team password and emails them the sign-in link. They type the team password, get in, and are asked to pick their own.</p>
+      <div id="coachList"><span class="sub">Loading…</span></div>
+      <div class="row"><input type="email" id="staffEmail" placeholder="coach@sacredheart.edu" style="flex:1;min-width:220px"><button class="btn primary" id="staffAdd">Add coach & send invite</button></div></div>
   </div>`;
   const rowData=tr=>{const a=athlete(tr.dataset.id);const g=k=>tr.querySelector(`[data-k="${k}"]`).value.trim();
     a.nickname=g('nickname');a.role=g('role');a.targets={...(a.targets||{}),ip:num(g('ip')),pitches:num(g('pitches'))};const em=g('email').toLowerCase();
@@ -1425,7 +1426,35 @@ function rosterView(){
   $('#rAdd').onclick=()=>{openLayer(`<h2>Add pitcher</h2><label class="f">Full name<input type="text" id="naName"></label><label class="f">Short name<input type="text" id="naNick"></label><label class="f">Email<input type="email" id="naEmail"></label><div class="row"><button class="btn primary" id="naGo">Add</button><button class="btn" id="naNo">Cancel</button></div>`);
     $('#naNo').onclick=closeLayer;$('#naGo').onclick=async()=>{const name=$('#naName').value.trim();if(!name){toast('Enter a name');return}let id=name.toLowerCase().replace(/[^a-z]/g,'');while(athlete(id))id+='x';
       await API.saveAthlete({id,name,nickname:$('#naNick').value.trim(),role:'',targets:{},role_note:'',email:$('#naEmail').value.trim().toLowerCase(),profile:{},archive:{}});closeLayer();const n=$('#naEmail')?null:await autoLogins();toast('Added '+name+(n&&n!=='no-team-pw'?' · login ready with the team password':''));rosterView()}};
-  $('#staffAdd').onclick=async()=>{const e=$('#staffEmail').value.trim().toLowerCase();if(!e)return;try{if(S.mode==='demo'){toast('Preview mode: coach not saved');return}const {error}=await sb.from('staff').upsert([{email:e}]);if(error)throw error;toast('Coach added');$('#staffEmail').value=''}catch(err){toast(err.message)}};
+  $('#staffAdd').onclick=()=>addCoach($('#staffEmail').value);
+  $('#staffEmail').onkeydown=e=>{if(e.key==='Enter')addCoach(e.target.value)};
+  loadCoaches();
+}
+/* ---------- coaches ---------- */
+const loginPill=r=>(!r||!r.has_login?'<span class="pill warn">No login yet</span>':r.on_team_password?'<span class="pill">Team password</span>':'<span class="pill good">Own password</span>')+
+  (r&&r.last_sign_in?` <span class="sub" style="font-size:11.5px">Last in ${new Date(r.last_sign_in).toLocaleDateString()}</span>`:r&&r.has_login?' <span class="sub" style="font-size:11.5px">Hasn’t signed in</span>':'');
+async function loadCoaches(){
+  const box=$('#coachList');if(!box)return;if(S.mode!=='cloud'){box.innerHTML='';return}
+  const {data,error}=await sb.rpc('coach_status');
+  if(error){box.innerHTML=`<p class="sub" style="margin:0">${/coach_status/.test(error.message)?'Run <span class="mono">supabase/07_coaches.sql</span> once in Supabase to turn on coach logins.':esc(error.message)}</p>`;return}
+  const me=(S.me.email||'').toLowerCase();
+  box.innerHTML=`<div class="tbl-wrap"><table><thead><tr><th>Email</th><th>Login</th><th></th></tr></thead><tbody>${(data||[]).map(r=>`<tr><td><b>${esc(r.email)}</b>${r.email===me?' <span class="sub">(you)</span>':''}</td><td>${loginPill(r)}</td>
+    <td class="r" style="white-space:nowrap">${r.email===me?'':`<button class="btn small" data-cinv="${esc(r.email)}">Send invite</button> <button class="btn small" data-creset="${esc(r.email)}">Reset to team password</button> <button class="btn small ghost" data-crm="${esc(r.email)}">Remove</button>`}</td></tr>`).join('')}</tbody></table></div>`;
+  box.querySelectorAll('[data-cinv]').forEach(b=>b.onclick=()=>addCoach(b.dataset.cinv));
+  box.querySelectorAll('[data-creset]').forEach(b=>b.onclick=async()=>{const {data,error}=await sb.rpc('reset_coach_password',{target:b.dataset.creset});toast(error?error.message:`${b.dataset.creset}: ${data}. They sign in with the team password.`);loadCoaches()});
+  box.querySelectorAll('[data-crm]').forEach(b=>b.onclick=()=>confirmBox(`Take ${b.dataset.crm} off the coach list? They won't be able to see the staff anymore.`,'Remove coach',async()=>{const {error}=await sb.rpc('remove_coach',{target:b.dataset.crm});toast(error?error.message:'Coach removed');loadCoaches()}));
+}
+async function addCoach(raw){
+  const e=String(raw||'').trim().toLowerCase();if(!e){toast('Type their email');return}
+  if(S.mode!=='cloud'){toast('Preview mode: coach not saved');return}
+  const {data:isSet}=await sb.rpc('team_password_is_set');if(!isSet){openLayer(`<h2>Set the team password first</h2><p>Go to <b>Setup → Team password</b>, type it once, then add the coach.</p><div class="row"><a class="btn primary" href="#setup" onclick="closeLayer()">Open Setup</a></div>`);return}
+  const {data,error}=await sb.rpc('add_coach',{target:e});if(error){toast(error.message);return}
+  if(data==='that’s you'||data==="that's you"){toast('That’s your own email');loadCoaches();return}
+  const {error:e2}=await sb.auth.signInWithOtp({email:e,options:{shouldCreateUser:false,emailRedirectTo:SITE_URL()+'?invite='+encodeURIComponent(e)}});
+  const inp=$('#staffEmail');if(inp)inp.value='';
+  if(e2)openLayer(`<h2>Coach added</h2><p>Their login is ready on the team password, but the email didn't send (${esc(/rate limit/i.test(e2.message)?'hourly email limit':e2.message)}).</p><p>Send them this link and tell them the team password:</p><p class="mono" style="word-break:break-all">${esc(SITE_URL()+'?invite='+encodeURIComponent(e))}</p><button class="btn" onclick="closeLayer()">Close</button>`);
+  else toast(`Coach added · invite sent to ${e}`);
+  loadCoaches();
 }
 /* After an email is saved, make sure he has a login on the team password (never touches anyone who chose his own). */
 async function autoLogins(){if(S.mode!=='cloud')return null;const {data:isSet}=await sb.rpc('team_password_is_set');if(!isSet)return 'no-team-pw';const {data,error}=await sb.rpc('provision_roster');if(error)return null;return (data||[]).filter(r=>r.result==='created'||r.result==='set to team password').length}
