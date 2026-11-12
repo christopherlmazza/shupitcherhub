@@ -640,7 +640,7 @@ function staffView(){
     </tr>`).join('');
   $('#app').innerHTML=`<div class="stack">
     <div class="spread"><div><div class="eyebrow">${new Date().toLocaleDateString(undefined,{weekday:'long',month:'long',day:'numeric'})}</div><h1>Staff overview</h1></div>
-      <div class="row"><a class="btn primary" href="#build">Build a program</a></div></div>
+      <div class="row"><button class="btn" id="bulkGo">Bulk edit days</button><a class="btn primary" href="#build">Build a program</a></div></div>
     ${seasonStrip()}
     <div class="panel"><div class="spread"><h2>Needs a look</h2><span class="sub">${flagged.length} item${flagged.length===1?'':'s'}</span></div>
       ${flagged.length?`<div class="flags">${flagged.map(x=>`<div class="flag ${x.f[0]}" data-p="${x.a.id}"><div><b>${esc(x.a.nickname||x.a.name)} · ${esc(x.f[1])}</b><small>${esc(x.f[2])}</small></div></div>`).join('')}</div>`:'<div class="empty">Nothing flagged. Every logged check-in is under 4 and loads are in range.</div>'}</div>
@@ -648,7 +648,53 @@ function staffView(){
       <div class="tbl-wrap"><table><thead><tr><th>Pitcher</th><th>Role</th><th>Today</th><th>Last check-in</th><th>Last 7 days</th><th class="r">Load</th><th class="r">Ratio</th><th>Game target</th></tr></thead><tbody>${tbl}</tbody></table></div></div>
   </div>`;
   document.querySelectorAll('[data-p]').forEach(el=>el.onclick=()=>go('p-'+el.dataset.p));
+  $('#bulkGo').onclick=()=>bulkEdit();
   if(!POPPED){POPPED=true;showUpdates(false)}
+}
+
+/* ============================================================ bulk edit
+   Move, copy, retype or clear days for many pitchers at once. Preview first, then apply. */
+function ownerProgram(aid,date){let best=null;for(const p of S.programs){if(p.athlete_id!==aid||!p.days||p.source==='filled')continue;
+  const inRange=p.start_date&&p.end_date?(date>=p.start_date&&date<=p.end_date):!!p.days[date];if(inRange&&(!best||String(p.created_at||'')>String(best.created_at||'')))best=p}return best}
+function bulkEdit(){
+  const st={who:new Set(S.athletes.filter(a=>!isTest(a)).map(a=>a.id)),from:TODAY,to:TODAY,only:'',action:'move',target:addDays(TODAY,1),newType:'Rest',replace:false};
+  const roster=S.athletes.filter(a=>!isTest(a)).sort((a,b)=>((a.role==='SP'?0:a.role==='RP'?1:2)-(b.role==='SP'?0:b.role==='RP'?1:2))||a.name.localeCompare(b.name));
+  const dates=()=>{const out=[];for(let d=st.from;d<=(st.to<st.from?st.from:st.to);d=addDays(d,1))out.push(d);return out};
+  const off=()=>Math.round((new Date(st.target+'T12:00')-new Date(st.from+'T12:00'))/864e5);
+  const plan=()=>{const ch=[];for(const a of roster){if(!st.who.has(a.id))continue;for(const d of dates()){const p=planDay(a.id,d);if(!p||p.filled)continue;if(st.only&&p.type!==st.only)continue;
+      if(st.action==='move'||st.action==='copy'){const t=addDays(d,off());const ex=planDay(a.id,t);const busy=ex&&!ex.filled&&(ex.type||hasSecContent(ex.sections));if(busy&&!st.replace){ch.push({a,d,t,skip:`${md(t)} already has ${ex.type||'a plan'}`,p});continue}ch.push({a,d,t,p,over:busy?ex.type||'plan':null})}
+      else ch.push({a,d,p})}}return ch};
+  const fmt=c=>`<b>${esc(c.a.nickname||c.a.name)}</b> ${md(c.d)} ${c.p.type?chip(c.p.type):''}`+(c.skip?` <span class="sub">skipped: ${esc(c.skip)}</span>`:st.action==='move'?` → ${md(c.t)}${c.over?` <span class="pill warn">replaces ${esc(c.over)}</span>`:''}`:st.action==='copy'?` copied to ${md(c.t)}${c.over?` <span class="pill warn">replaces ${esc(c.over)}</span>`:''}`:st.action==='type'?` → ${chip(st.newType)}`:' <span class="sub">cleared</span>');
+  const draw=()=>{const ch=plan();const n=ch.filter(c=>!c.skip).length;
+    openLayer(`<div class="stack" style="gap:14px"><div class="spread"><h2 style="margin:0">Bulk edit days</h2><button class="btn small ghost" id="bxClose">Close</button></div>
+      <div><div class="eyebrow" style="margin-bottom:6px">Pitchers</div><div class="row" style="gap:6px;margin-bottom:6px"><button class="btn small" data-bset="all">Everyone</button><button class="btn small" data-bset="SP">Starters</button><button class="btn small" data-bset="RP">Relievers</button><button class="btn small ghost" data-bset="none">None</button></div>
+        <div class="row" style="gap:4px">${roster.map(a=>`<button type="button" class="chip ${st.who.has(a.id)?'on':''}" data-bwho="${a.id}" style="${st.who.has(a.id)?'':'opacity:.4'}">${esc(a.nickname||a.name)}</button>`).join('')}</div></div>
+      <div class="row" style="gap:8px"><label class="f">From<input type="date" id="bxFrom" value="${st.from}"></label><label class="f">Through<input type="date" id="bxTo" value="${st.to}"></label>
+        <label class="f">Only days that are<select id="bxOnly"><option value="">Any type</option>${types().map(t=>`<option ${st.only===t.name?'selected':''}>${esc(t.name)}</option>`).join('')}</select></label></div>
+      <div class="row" style="gap:8px;align-items:flex-end"><label class="f">Do this<select id="bxAct">${[['move','Move to another day'],['copy','Copy to another day'],['type','Change day type'],['clear','Clear the day']].map(([v,l])=>`<option value="${v}" ${st.action===v?'selected':''}>${l}</option>`).join('')}</select></label>
+        ${st.action==='move'||st.action==='copy'?`<label class="f">${st.from===st.to?'New day':'New start day'}<input type="date" id="bxTarget" value="${st.target}"></label><label class="row" style="gap:6px;font-size:13px;padding-bottom:8px"><input type="checkbox" id="bxRep" ${st.replace?'checked':''}> Replace days that already have a plan</label>`:''}
+        ${st.action==='type'?`<label class="f">New type<select id="bxType">${types().map(t=>`<option ${st.newType===t.name?'selected':''}>${esc(t.name)}</option>`).join('')}</select></label>`:''}</div>
+      <div class="panel" style="padding:10px 12px;max-height:38vh;overflow:auto"><div class="eyebrow" style="margin-bottom:6px">Preview · ${n} change${n===1?'':'s'}</div>${ch.length?ch.map(c=>`<div style="font-size:13px;padding:3px 0;${c.skip?'opacity:.55':''}">${fmt(c)}</div>`).join(''):'<span class="sub">Nothing matches. Check the dates, pitchers and type filter.</span>'}</div>
+      <div class="row"><button class="btn primary" id="bxApply" ${n?'':'disabled'}>Apply ${n} change${n===1?'':'s'}</button></div></div>`);
+    $('#bxClose').onclick=closeLayer;
+    document.querySelectorAll('[data-bset]').forEach(b=>b.onclick=()=>{const v=b.dataset.bset;st.who=new Set(v==='none'?[]:roster.filter(a=>v==='all'||a.role===v).map(a=>a.id));draw()});
+    document.querySelectorAll('[data-bwho]').forEach(b=>b.onclick=()=>{const id=b.dataset.bwho;st.who.has(id)?st.who.delete(id):st.who.add(id);draw()});
+    const bind=(id,k,ev='change')=>{const el=$(id);if(el)el['on'+ev]=()=>{st[k]=el.type==='checkbox'?el.checked:el.value;if(k==='from'&&st.to<st.from)st.to=st.from;draw()}};
+    bind('#bxFrom','from');bind('#bxTo','to');bind('#bxOnly','only');bind('#bxAct','action');bind('#bxTarget','target');bind('#bxRep','replace');bind('#bxType','newType');
+    $('#bxApply').onclick=async()=>{const b=$('#bxApply');b.disabled=true;b.textContent='Saving…';const touched=new Set();
+      try{const list=ch.filter(c=>!c.skip);
+        /* read every source day first so overlapping moves don't chase each other */
+        const src=list.map(c=>({...c,day:JSON.parse(JSON.stringify(c.p.program.days[c.d]||{})),prog:c.p.program}));
+        if(st.action==='move')for(const c of src){delete c.prog.days[c.d];touched.add(c.prog)}
+        for(const c of src){
+          if(st.action==='clear'){delete c.prog.days[c.d];touched.add(c.prog)}
+          else if(st.action==='type'){const d=c.prog.days[c.d];d.type=st.newType;if(st.newType!==RTT)delete d.rtt;touched.add(c.prog)}
+          else{let prog=ownerProgram(c.a.id,c.t);if(!prog){prog={id:uid(),athlete_id:c.a.id,title:'Coach edits',start_date:monday(c.t),end_date:addDays(monday(c.t),6),days:{},source:'app',created_at:new Date().toISOString()};S.programs.push(prog)}
+            prog.days[c.t]=JSON.parse(JSON.stringify(c.day));touched.add(prog)}}
+        for(const p of touched)await API.saveProgram(p);
+        closeLayer();toast(`Done · ${list.length} day${list.length===1?'':'s'} updated`);render()}
+      catch(e){toast(e.message);b.disabled=false;b.textContent='Try again'}};
+  };draw();
 }
 
 /* ============================================================ coach: player page */
