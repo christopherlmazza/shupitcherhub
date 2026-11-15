@@ -444,11 +444,18 @@ function rttToDays(rtt,startMonday,maxV){
   return days;
 }
 /* The newest program whose date range covers the day decides that day, even if it leaves the day blank, so an old block never bleeds into a new one. */
-function planDay(aid,date){let best=null,fill=null;for(const p of S.programs){if(p.athlete_id!==aid||!p.days)continue;
-  if(p.source==='filled'){if(p.days[date])fill=p;continue}
-  const inRange=p.start_date&&p.end_date?(date>=p.start_date&&date<=p.end_date):!!p.days[date];if(!inRange)continue;if(!best||String(p.created_at||'')>String(best.created_at||''))best=p}
-  if(best&&best.days[date]&&(best.days[date].type||hasSecContent(best.days[date].sections)||best.days[date].dayNotes))return {...best.days[date],program:best};
-  /* Filled-in days (inferred from pitch data and his fall pattern) only show where no real plan exists. */
+/* Which plan shows on a date, across all of a pitcher's programs:
+   - the newest coach program (builder / Drive / return to throw) covering the date owns it, so a new block replaces an old one;
+   - a single-day edit (source 'athlete') only overrides the days it actually has, and only if it's newer than that block;
+   - filled-in days (from pitch data) show only where nothing else exists. */
+function planDay(aid,date){let best=null,ath=null,fill=null;const has=d=>d&&(d.type||hasSecContent(d.sections)||d.dayNotes);
+  for(const p of S.programs){if(p.athlete_id!==aid||!p.days)continue;
+    if(p.source==='filled'){if(p.days[date])fill=p;continue}
+    const inRange=p.start_date&&p.end_date?(date>=p.start_date&&date<=p.end_date):!!p.days[date];if(!inRange)continue;
+    if(p.source==='athlete'){if(has(p.days[date])&&(!ath||String(p.created_at||'')>String(ath.created_at||'')))ath=p;continue}
+    if(!best||String(p.created_at||'')>String(best.created_at||''))best=p}
+  if(ath&&(!best||!has(best.days[date])||String(ath.created_at||'')>String(best.created_at||'')))return {...ath.days[date],program:ath};
+  if(best&&has(best.days[date]))return {...best.days[date],program:best};
   if(fill)return {...fill.days[date],program:fill,filled:true};
   return best&&best.days[date]?{...best.days[date],program:best}:null}
 function logFor(aid,date){return S.logIdx[aid+'|'+date]||null}
@@ -1316,7 +1323,8 @@ async function editDayPlan(aid,date,day){
   const p=planDay(aid,date);const stamp=S.me.role==='coach'&&!S.viewAs?{}:{editedBy:S.me.email,editedAt:new Date().toISOString()};
   const body={type:day.type||null,sections:day.sections,dayNotes:day.dayNotes||''};if(day.throws!=null)body.throws=day.throws;else delete body.throws;if(day.intensity!=null)body.intensity=day.intensity;
   if(p){const prog=p.program;const old=prog.days[date]||{};const merged={...old,...body,...stamp};if(day.throws==null)delete merged.throws;if(day.intensity==null)delete merged.intensity;if(merged.type!==RTT)delete merged.rtt;prog.days[date]=merged;await API.saveProgram(prog)}
-  else{const own=S.programs.find(x=>x.athlete_id===aid&&x.source==='athlete'&&x.start_date===monday(date));
+  else{const blk=ownerProgram(aid,date);if(blk&&blk.source!=='athlete'){blk.days[date]={...body,...stamp};await API.saveProgram(blk);return}
+    const own=S.programs.find(x=>x.athlete_id===aid&&x.source==='athlete'&&x.start_date===monday(date));
     if(own){own.days[date]={...body,...stamp};await API.saveProgram(own)}
     else await API.saveProgram({id:uid(),athlete_id:aid,title:'My plan',start_date:monday(date),end_date:addDays(monday(date),6),days:{[date]:{...body,...stamp}},source:'athlete',created_at:new Date().toISOString()})}
 }
