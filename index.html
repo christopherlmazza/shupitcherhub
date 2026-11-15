@@ -192,6 +192,7 @@ td.r,th.r{text-align:right}
 /* drawer / toast */
 .scrim{position:fixed;inset:0;background:rgba(0,0,0,.35);z-index:40}
 .drawer{position:fixed;top:0;right:0;bottom:0;width:min(560px,100%);background:var(--panel);z-index:41;padding:20px;padding-top:calc(20px + env(safe-area-inset-top,0px));padding-bottom:calc(20px + env(safe-area-inset-bottom,0px));padding-right:max(20px,env(safe-area-inset-right,0px));overflow-y:auto;display:flex;flex-direction:column;gap:14px;border-left:1px solid var(--line)}
+.drawer>*{flex-shrink:0}
 .toast{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(20px + env(safe-area-inset-bottom,0px));background:var(--ink);color:var(--bg);padding:10px 16px;border-radius:8px;z-index:50;font-size:13px;max-width:calc(100% - 32px)}
 .empty{padding:26px;text-align:center;color:var(--muted);border:1px dashed var(--line);border-radius:8px}
 .tabs{display:flex;gap:2px;border-bottom:1px solid var(--line);overflow-x:auto}
