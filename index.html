@@ -141,6 +141,10 @@ td.r,th.r{text-align:right}
 .bgrid{display:grid;grid-template-columns:58px repeat(7,minmax(112px,1fr)) 70px;gap:6px;min-width:920px;align-items:stretch}
 .bgrid .bh{font:600 12px var(--f-display);letter-spacing:.1em;text-transform:uppercase;color:var(--muted);padding:2px 4px}
 .bgrid .wk{font-size:11.5px;color:var(--muted);padding:8px 0}.bgrid .tot{display:flex;flex-direction:column;gap:4px;padding:8px 0;font-size:12px}
+.upgrid{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:6px}
+.upd{all:unset;box-sizing:border-box;cursor:pointer;display:flex;flex-direction:column;gap:4px;padding:8px;min-height:110px;border-radius:8px;background:var(--panel);border:1px solid var(--line);border-top:4px solid var(--tc);font-size:12px;min-width:0}
+.upd:hover{border-color:var(--muted);border-top-color:var(--tc)}.upd:focus-visible{outline:2px solid var(--red);outline-offset:2px}.upd.today{box-shadow:0 0 0 2px var(--red)}
+@media (max-width:760px){.upgrid{grid-template-columns:1fr}.upd{min-height:0}}
 .bday{all:unset;box-sizing:border-box;cursor:pointer;display:flex;flex-direction:column;gap:4px;padding:7px 8px;min-height:92px;border-radius:8px;background:var(--panel);border:1px solid var(--line);border-top:4px solid var(--tc);font-size:12px;min-width:0}
 .bday:hover{border-color:var(--muted);border-top-color:var(--tc)}.bday:focus-visible{outline:2px solid var(--red);outline-offset:2px}
 .bday.empty{background:var(--soft);border:1px dashed var(--line);border-top:4px solid var(--line);padding:7px 8px;text-align:left;align-items:stretch}.bday.empty .bd-add{align-self:center;margin-top:14px}.bd-top{display:flex;justify-content:space-between;gap:4px;color:var(--muted);font-size:11px}
@@ -1587,11 +1591,14 @@ async function importSeed(seed,say){
 }
 
 /* ============================================================ athlete side */
+let ATHOFF=0;
 function athleteToday(aid){
   const a=athlete(aid);if(!a){$('#app').innerHTML='<div class="empty">Your roster spot wasn’t found.</div>';return}
   const p=planDay(aid,TODAY);const prof=a.profile||{};const card=p&&p.type&&(prof.cards||{})[p.type];const t=types().find(x=>x.name===(p&&p.type));
   const ws=monday(TODAY);const logged=logFor(aid,TODAY);
-  let strip='';for(let i=0;i<7;i++){const d=addDays(ws,i);const pp=planDay(aid,d);const l=logFor(aid,d);strip+=`<div class="d ${d===TODAY?'today':''}" data-day="${d}" data-aid="${aid}" style="min-height:70px"><span class="dn">${DAYS[i]} ${md(d)}</span>${chip((l&&l.type)||(pp&&pp.type))}${l&&l.checkin!=null?ciBadge(l.checkin):''}</div>`}
+  const up0=addDays(TODAY,7*ATHOFF);let strip='';for(let i=0;i<7;i++){const d=addDays(up0,i);const pp=planDay(aid,d);const l=logFor(aid,d);const thr=pp&&(pp.rtt?pp.rtt.throws:pp.throws);
+    strip+=`<button type="button" class="upd ${d===TODAY?'today':''}" data-day="${d}" style="--tc:${pp&&pp.type?`var(--t-${TVAR[pp.type]||'rest'})`:'var(--line)'}"><span class="bd-top"><span class="mono">${d===TODAY?'Today':dayName(d)} ${md(d)}</span>${l?'<span class="pill good" style="font-size:10px">Logged</span>':''}</span>
+      ${(l&&l.type)||(pp&&pp.type)?chip((l&&l.type)||pp.type):'<span class="sub">Nothing planned</span>'}${thr||(pp&&pp.intensity)?`<span class="mono bd-meta">${[thr?thr+' throws':'',pp.intensity?pp.intensity+'%':''].filter(Boolean).join(' · ')}</span>`:''}${pp&&pp.dayNotes?`<span class="pv"><i>${esc(pp.dayNotes)}</i></span>`:''}${pp?cellPreview(pp):''}</button>`}
   const next=calendar().find(c=>c.date>=TODAY);
   $('#app').innerHTML=`<div class="stack">
     <div class="spread"><div><div class="eyebrow">${new Date().toLocaleDateString(undefined,{weekday:'long',month:'long',day:'numeric'})}</div><h1>${esc((a.nickname||a.name.split(' ')[0]))}, here's today</h1></div>
@@ -1608,14 +1615,17 @@ function athleteToday(aid){
       </div>
       <div class="panel stack"><div class="spread"><h2>${logged?'Today’s log':'Log today'}</h2>${logged?'<span class="pill good">Logged</span>':''}</div>${voiceBlock('tl')}${logged&&logged.summary?logSummaryHtml(logged):''}${attachBlock('tl',aid,TODAY)}<details class="manual"${logged&&!logged.summary?' open':''}><summary>Or fill it in by hand</summary>${logForm(aid,TODAY,'tl')}</details><button class="btn primary" id="tSave">${logged?'Update log':'Save log'}</button></div>
     </div>
-    <div class="panel"><h2>This week</h2><div style="overflow-x:auto"><div class="cal" style="grid-template-columns:repeat(7,minmax(92px,1fr));min-width:680px">${strip}</div></div></div>
+    <div class="panel stack" style="gap:10px"><div class="spread"><div><h2 style="margin:0">${ATHOFF===0?'Coming up':ATHOFF<0?'Earlier':'Further ahead'}</h2><span class="sub" style="font-size:12.5px">${md(up0)} – ${md(addDays(up0,6))} · tap a day for the full plan</span></div>
+      <div class="row" style="gap:6px"><button class="btn small" id="upPrev" aria-label="Previous 7 days">◀</button>${ATHOFF?'<button class="btn small" id="upNow">Today</button>':''}<button class="btn small" id="upNext" aria-label="Next 7 days">▶</button></div></div>
+      <div class="upgrid">${strip}</div></div>
     ${targetCard(a,false)}
     
   </div>`;
   bindLogForm('tl');bindVoice('tl',aid,TODAY,()=>athleteToday(aid));bindAttach('tl',aid,TODAY,()=>athleteToday(aid));
   $('#tEdit').onclick=()=>dayEditor(`${dayName(TODAY)} ${md(TODAY)}`,p?{...p,program:undefined}:{},async(day)=>{await editDayPlan(aid,TODAY,day);athleteToday(aid)});
   $('#tSave').onclick=async()=>{try{await API.saveLog(readLogForm('tl',aid,TODAY));toast('Logged. Coach can see it now.');athleteToday(aid)}catch(e){toast(e.message)}};
-  document.querySelectorAll('.cal [data-day]').forEach(el=>el.onclick=()=>dayDrawer(aid,el.dataset.day));
+  document.querySelectorAll('.upgrid [data-day]').forEach(el=>el.onclick=()=>dayDrawer(aid,el.dataset.day));
+  $('#upPrev').onclick=()=>{ATHOFF--;athleteToday(aid)};$('#upNext').onclick=()=>{ATHOFF++;athleteToday(aid)};const un=$('#upNow');if(un)un.onclick=()=>{ATHOFF=0;athleteToday(aid)};
 }
 function athleteHistory(aid){
   const a=athlete(aid);
