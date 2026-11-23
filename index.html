@@ -1020,7 +1020,7 @@ function bindVoice(prefix,aid,date,after){
     catch(err){msg.textContent=err.message||String(err)}finally{$('#'+prefix+'read').disabled=false}};
 }
 function showVoiceReview(prefix,aid,date,d,transcript,ex,after){
-  const SEC=[['prework','Pre-work'],['plyo','Plyo'],['throwing','Throwing'],['medball','Med ball'],['focus','Bullpen / live'],['other','Other']];
+  const SEC=[['prework','Pre-work'],['medball','Med ball'],['plyo','Plyo'],['throwing','Throwing'],['focus','Bullpen / live'],['other','Other']];
   const ciPicked=$('#'+prefix+'ci .on');const ci=d.checkin!=null?d.checkin:(ciPicked?+ciPicked.dataset.v:null);
   const nums=[d.throws!=null?`${d.throws} throws`:'',d.intensity!=null?`${d.intensity}% effort`:'',d.pitches!=null?`${d.pitches} pitches`:'',d.innings!=null?`${d.innings} IP`:'',ci!=null?`check-in ${ci}/10`:''].filter(Boolean).join(' · ');
   let picked=null;const ptsFor=t=>t?(t===RTT?genericRttLoad({throws:d.throws,intensity:d.intensity}):pts_(t)):0;
@@ -1045,7 +1045,7 @@ function showVoiceReview(prefix,aid,date,d,transcript,ex,after){
     try{await API.saveLog(log);toast('Logged. Coach can see it now.');after&&after()}catch(e){toast(e.message)}};
 }
 const pts_=t=>pts(t);
-function logSummaryHtml(l){const sm=l&&l.summary;if(!sm||!sm.sections)return '';const SEC=[['prework','Pre-work'],['plyo','Plyo'],['throwing','Throwing'],['medball','Med ball'],['focus','Bullpen / live'],['other','Other']];
+function logSummaryHtml(l){const sm=l&&l.summary;if(!sm||!sm.sections)return '';const SEC=[['prework','Pre-work'],['medball','Med ball'],['plyo','Plyo'],['throwing','Throwing'],['focus','Bullpen / live'],['other','Other']];
   return `<div class="vsum">${SEC.filter(([k])=>(sm.sections[k]||[]).length).map(([k,lab])=>`<div><b>${lab}</b>${sm.sections[k].map(x=>`<span>• ${esc(x)}</span>`).join('')}</div>`).join('')}${(sm.differences||[]).length?`<div><b>Vs. plan</b>${sm.differences.map(x=>`<span>• ${esc(x)}</span>`).join('')}</div>`:''}</div>`}
 
 
@@ -1236,7 +1236,7 @@ function targetCard(a,coach){
 }
 
 /* ============================================================ day sections + drill library */
-const SECTIONS=[['prework','Pre-work'],['plyo','Plyo'],['throwing','Throwing'],['medball','Med ball'],['focus','Bullpen / live focus']];
+const SECTIONS=[['prework','Pre-work'],['medball','Med ball'],['plyo','Plyo'],['throwing','Throwing'],['focus','Bullpen / live focus']];
 const PLYO_RX=/plyo|pivot pick|roll-?in|reverse throw|walking windup|marshall|rocker|drop step|step.?in front|janitor|figure 8|wall throw|scap/i;
 const SECLABEL=Object.fromEntries(SECTIONS);
 function drillLib(){
